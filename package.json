@@ -1,0 +1,17 @@
+{
+  "name": "dailyreport",
+  "version": "1.0.0",
+  "description": "Automated daily content curation with Claude AI",
+  "scripts": {
+    "generate": "bun run src/index.ts",
+    "dry-run": "bun run src/index.ts --dry-run"
+  },
+  "dependencies": {
+    "fast-xml-parser": "^4.4.1",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "typescript": "^5.7.3"
+  }
+}

@@ -1,0 +1,164 @@
+topics:
+  - name: "AI & LLMs"
+    keywords:
+      - llm
+      - claude
+      - gpt
+      - openai
+      - anthropic
+      - transformer
+      - "machine learning"
+      - "neural network"
+      - "large language model"
+      - "generative ai"
+      - "ai model"
+    subreddits:
+      - MachineLearning
+      - artificial
+      - LocalLLaMA
+      - singularity
+    rss:
+      - https://www.technologyreview.com/feed/
+      # YouTube: Two Minute Papers
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UCbfYPyITQ-7l4upoX8nvctg
+      # YouTube: Yannic Kilcher (ML paper deep-dives)
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UCZHmQk67mSJgfCCTn7xBfew
+      # YouTube: Louis Rossmann (from your subscriptions — tech/AI policy)
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UCl2mFZoRqjw_ELax4Yisf6w
+
+  - name: "Software Development"
+    keywords:
+      - programming
+      - typescript
+      - rust
+      - golang
+      - "open source"
+      - framework
+      - developer
+      - devops
+      - kubernetes
+      - docker
+      - api
+      - software
+    subreddits:
+      - programming
+      - webdev
+      - devops
+      - rust
+      - typescript
+    rss:
+      - https://hnrss.org/frontpage
+      # YouTube: Fireship (short-form dev content)
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UCsBjURrPoezykLs9EqgamOA
+      # YouTube: No Boilerplate (Rust-focused)
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UCUMwY9iS8oMyWDYIe6_RmoA
+      # YouTube: NetworkChuck (from your subscriptions — networking, Linux, dev)
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UC9x0AN7BWHpCDHSm9NiJFJQ
+
+
+  - name: "Geopolitics & World News"
+    keywords:
+      - geopolitics
+      - politics
+      - economy
+      - war
+      - trade
+      - election
+      - diplomacy
+      - sanctions
+      - nato
+      - un
+      - treaty
+      - conflict
+    subreddits:
+      - worldnews
+      - geopolitics
+      - Economics
+    rss:
+      - https://feeds.bbci.co.uk/news/world/rss.xml
+      - https://rss.nytimes.com/services/xml/rss/nyt/World.xml
+      # YouTube: CaspianReport (geopolitics analysis)
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UCwnKziETDbHJtx78nIkfYug
+      # YouTube: Perun (from your subscriptions — military/defence deep-dives)
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UCC3ehuUksTyQ7bbjGntmx3Q
+      # YouTube: The Operations Room (from your subscriptions — animated military ops)
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UCnZJt7yQw5IztVwe-Dscd-Q
+      # YouTube: Ryan McBeth (from your subscriptions — military tech analysis)
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UC8URMa1fI4rlaLc-Lhev2fQ
+
+  - name: "Robotics, Electronics & 3D Printing"
+    keywords:
+      - robotics
+      - arduino
+      - "raspberry pi"
+      - electronics
+      - pcb
+      - "3d printing"
+      - maker
+      - hardware
+      - microcontroller
+      - drone
+      - servo
+      - "circuit board"
+    subreddits:
+      - robotics
+      - arduino
+      - electronics
+      - 3Dprinting
+      - raspberry_pi
+      - PrintedCircuitBoard
+    rss:
+      - https://hackaday.com/feed/
+      - https://spectrum.ieee.org/feeds/feed.rss
+      # YouTube: ElectroBOOM (electronics + education)
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UCJ0-OtVpF0wOKEqT2Z1HEtA
+      # YouTube: Stuff Made Here (engineering builds)
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UCj1VqrHhDte54oLgPG4xpuQ
+      # YouTube: EEVblog (from your subscriptions — electronics teardowns/reviews)
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UC2DjFE7Xf11URZqWBigcVOQ
+      # YouTube: Integza (from your subscriptions — jet engines, robotics experiments)
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UC2avWDLN1EI3r1RZ_dlSxCw
+      # YouTube: Ivan Miranda (from your subscriptions — 3D printing projects)
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UCF3cDM_hQMtIEJvEW1BZugg
+      # YouTube: rctestflight (from your subscriptions — RC/drones/autonomous builds)
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UCq2rNse2XX4Rjzmldv9GqrQ
+
+  - name: "Science & Technology"
+    keywords:
+      - science
+      - physics
+      - biology
+      - space
+      - climate
+      - research
+      - breakthrough
+      - discovery
+      - quantum
+      - genome
+      - astronomy
+      - nasa
+    subreddits:
+      - science
+      - technology
+      - space
+      - Futurology
+      - Physics
+    rss:
+      - https://www.sciencedaily.com/rss/top/science.xml
+      - https://www.nasa.gov/rss/dyn/breaking_news.rss
+      # YouTube: Veritasium
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UCHnyfMqiRRG1u-2MsSQLbXA
+      # YouTube: Kurzgesagt
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UCsXVk37bltHxD1rDPwtNM8Q
+      # YouTube: PBS Space Time (from your subscriptions — physics/cosmology deep-dives)
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UC7_gcs09iThXybpVgjHZ_7g
+      # YouTube: Scott Manley (from your subscriptions — space/astronomy)
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UCxzC4EngIsMrPmbm6Nxvb-A
+      # YouTube: Real Engineering (from your subscriptions — engineering explainers)
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UCR1IuLEqb6UEA_zQ81kwXfg
+      # YouTube: StarTalk (from your subscriptions — Neil deGrasse Tyson)
+      - https://www.youtube.com/feeds/videos.xml?channel_id=UCqoAEDirJPjEUFcF2FklnBA
+
+feedback_weight_file: config/feedback-weights.json
+report_output_dir: reports
+articles_per_category: 5
