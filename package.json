@@ -8,6 +8,7 @@
     "serve": "bun run src/server.ts"
   },
   "dependencies": {
+    "basic-ftp": "^5.2.0",
     "fast-xml-parser": "^4.4.1",
     "js-yaml": "^4.1.0"
   },

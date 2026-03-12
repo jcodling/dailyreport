@@ -1,0 +1,20 @@
+Options -Indexes
+DirectoryIndex index.html
+
+# Block direct HTTP access to markdown report files
+<Files "*.md">
+    Order deny,allow
+    Deny from all
+</Files>
+
+RewriteEngine On
+RewriteBase /
+
+# Pass through existing static files (index.html, api.php, etc.)
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Route /api/* to api.php
+RewriteRule ^api/reports$                                   api.php [L,QSA]
+RewriteRule ^api/report/([0-9]{4}-[0-9]{2}-[0-9]{2})$      api.php [L,QSA]
+RewriteRule ^api/feedback$                                  api.php [L,QSA]

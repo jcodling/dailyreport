@@ -9,9 +9,11 @@ import { parseFeedback } from "./feedback";
 import { prefilter } from "./prefilter";
 import { curateWithClaude } from "./curator";
 import { renderReport } from "./report";
+import { downloadYesterday, uploadToday } from "./ftp";
 
 const PROJECT_ROOT = join(import.meta.dir, "..");
 const isDryRun = process.argv.includes("--dry-run");
+const ftpEnabled = !!process.env.FTP_HOST;
 
 function loadConfig(): Config {
   const configPath = join(PROJECT_ROOT, "config/interests.yaml");
@@ -40,9 +42,20 @@ async function fetchAll(config: Config) {
 
 async function main() {
   const config = loadConfig();
+  const reportsDir = join(PROJECT_ROOT, config.report_output_dir);
   console.log(`Loaded config: ${config.topics.length} topics, ${config.articles_per_category} articles/category`);
 
-  // Step 1: Parse feedback from yesterday's report
+  // Step 1: FTP — download yesterday's report (with any votes the user added)
+  if (ftpEnabled && !isDryRun) {
+    console.log("\nFTP: Syncing yesterday's report...");
+    try {
+      await downloadYesterday(reportsDir);
+    } catch (err) {
+      console.warn("  [ftp] Download failed, continuing with local copy:", err);
+    }
+  }
+
+  // Step 2: Parse feedback from yesterday's report
   console.log("\nParsing feedback from yesterday's report...");
   const { summary: feedbackSummary, weights } = parseFeedback(
     config.feedback_weight_file,
@@ -50,12 +63,12 @@ async function main() {
   );
   console.log("Feedback:", feedbackSummary.split("\n")[0]);
 
-  // Step 2: Fetch all articles in parallel
+  // Step 3: Fetch all articles in parallel
   console.log("\nFetching articles...");
   const articles = await fetchAll(config);
   console.log(`Total: ${articles.length} articles fetched`);
 
-  // Step 3: Pre-filter to top candidates per topic
+  // Step 4: Pre-filter to top candidates per topic
   console.log("\nPre-filtering articles...");
   const { filtered, stats } = prefilter(articles, config.topics, weights, config.articles_per_category);
   console.log(stats);
@@ -72,7 +85,7 @@ async function main() {
     return;
   }
 
-  // Step 4: Curate with Claude
+  // Step 5: Curate with Claude
   console.log("\nCalling Claude to curate articles...");
   const curationResult = await curateWithClaude(
     filtered,
@@ -82,16 +95,22 @@ async function main() {
     config.articles_per_category
   );
 
-  const categoryCount = curationResult.categories.length;
-  const totalArticles = curationResult.categories.reduce(
-    (sum, c) => sum + c.articles.length,
-    0
-  );
-  console.log(`Curated: ${categoryCount} categories, ${totalArticles} articles + 1 wildcard`);
+  const totalArticles = curationResult.categories.reduce((sum, c) => sum + c.articles.length, 0);
+  console.log(`Curated: ${curationResult.categories.length} categories, ${totalArticles} articles + 1 wildcard`);
 
-  // Step 5: Render and write report
+  // Step 6: Render and write report
   const reportPath = renderReport(curationResult, config.report_output_dir);
   console.log(`\nReport written to: ${reportPath}`);
+
+  // Step 7: FTP — upload today's report to IONOS
+  if (ftpEnabled) {
+    console.log("\nFTP: Uploading today's report...");
+    try {
+      await uploadToday(reportsDir);
+    } catch (err) {
+      console.warn("  [ftp] Upload failed:", err);
+    }
+  }
 }
 
 main().catch((err) => {
