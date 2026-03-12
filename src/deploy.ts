@@ -1,5 +1,5 @@
 // src/deploy.ts — run once after any web UI change
-import { makeClient } from "./ftp";
+import { makeClient } from "./sftp";
 import { join } from "path";
 
 const PUBLIC_DIR = join(import.meta.dir, "..", "public");

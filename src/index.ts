@@ -9,7 +9,7 @@ import { parseFeedback } from "./feedback";
 import { prefilter } from "./prefilter";
 import { curateWithClaude } from "./curator";
 import { renderReport } from "./report";
-import { downloadYesterday, uploadToday } from "./ftp";
+import { downloadYesterday, uploadToday } from "./sftp";
 
 const PROJECT_ROOT = join(import.meta.dir, "..");
 const isDryRun = process.argv.includes("--dry-run");

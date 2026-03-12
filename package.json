@@ -9,7 +9,6 @@
     "deploy": "bun run src/deploy.ts"
   },
   "dependencies": {
-    "basic-ftp": "^5.2.0",
     "fast-xml-parser": "^4.4.1",
     "js-yaml": "^4.1.0",
     "ssh2-sftp-client": "^12.1.0"

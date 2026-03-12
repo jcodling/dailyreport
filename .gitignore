@@ -1,6 +1,7 @@
 .env
-.env.example
 public/config.php
 reports/
 node_modules/
 dist/
+.vscode/
+.claude/
