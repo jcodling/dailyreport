@@ -4,7 +4,8 @@
   "description": "Automated daily content curation with Claude AI",
   "scripts": {
     "generate": "bun run src/index.ts",
-    "dry-run": "bun run src/index.ts --dry-run"
+    "dry-run": "bun run src/index.ts --dry-run",
+    "serve": "bun run src/server.ts"
   },
   "dependencies": {
     "fast-xml-parser": "^4.4.1",
