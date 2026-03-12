@@ -1,3 +1,12 @@
+<?php
+session_set_cookie_params(['lifetime' => 86400 * 30, 'samesite' => 'Lax', 'secure' => true]);
+session_start();
+require_once __DIR__ . '/config.php';
+if (empty($_SESSION['user_email']) || $_SESSION['user_email'] !== ALLOWED_EMAIL) {
+    header('Location: auth.php?action=login');
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -294,6 +303,7 @@ a:hover { color: var(--link-hover); text-decoration: underline; }
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
+  gap: 5px;
   font-size: 11px;
   font-weight: 500;
   color: var(--muted);
@@ -306,6 +316,12 @@ a:hover { color: var(--link-hover); text-decoration: underline; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.source-badge img {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  object-fit: contain;
 }
 
 .article-reason {
@@ -551,6 +567,13 @@ function esc(str) {
     .replace(/"/g, '&quot;');
 }
 
+function faviconUrl(url) {
+  try {
+    const domain = new URL(url).hostname;
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
+  } catch { return null; }
+}
+
 function catIcon(name) {
   for (const [k, v] of Object.entries(CAT_ICONS)) {
     if (name.includes(k)) return v;
@@ -665,7 +688,7 @@ function renderArticle(a) {
       <div class="article-body">
         <div class="article-title-row">
           <a class="article-title" href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.title)}</a>
-          <span class="source-badge" title="${esc(a.source)}">${esc(a.source)}</span>
+          <span class="source-badge" title="${esc(a.source)}">${faviconUrl(a.url) ? `<img src="${faviconUrl(a.url)}" alt="">` : ''}${esc(a.source)}</span>
         </div>
         <p class="article-reason">${esc(a.reason)}</p>
         <div class="vote-row">
@@ -688,7 +711,7 @@ function renderWildcard(w) {
         <span class="wc-label">Wildcard Pick</span>
       </div>
       <a class="wc-title" href="${esc(w.url)}" target="_blank" rel="noopener">${esc(w.title)}</a>
-      <span class="wc-source">${esc(w.source)}</span>
+      <span class="wc-source" style="display:inline-flex;align-items:center;gap:5px;">${faviconUrl(w.url) ? `<img src="${faviconUrl(w.url)}" alt="" style="width:12px;height:12px;object-fit:contain;">` : ''}${esc(w.source)}</span>
       <p class="wc-reason">${esc(w.reason)}</p>
       <div class="vote-row">
         <button class="vote-btn up${w.vote===1?' active':''}" data-vote="1">
@@ -772,7 +795,7 @@ async function loadReport(date) {
   $('report-date-heading').textContent = fmtDate(date);
 
   try {
-    const res = await fetch(`/api/report/${date}`);
+    const res = await fetch(`api/report/${date}`);
     if (!res.ok) { renderReport(null); return; }
     const text = await res.text();
     currentReport = parseMarkdown(date, text);
@@ -784,7 +807,7 @@ async function loadReport(date) {
 
 async function init() {
   try {
-    const res = await fetch('/api/reports');
+    const res = await fetch('api/reports');
     dates = await res.json();
   } catch {
     dates = [];
@@ -831,7 +854,7 @@ $('report-body').addEventListener('click', async e => {
 
   // Persist
   try {
-    const res = await fetch('/api/feedback', {
+    const res = await fetch('api/feedback', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ date: currentDate, lineIndex, vote: newVote }),

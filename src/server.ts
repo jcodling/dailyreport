@@ -53,7 +53,7 @@ const server = Bun.serve({
 
     // Serve SPA
     if (req.method === "GET" && (path === "/" || path === "/index.html")) {
-      const html = readFileSync(join(PUBLIC_DIR, "index.html"), "utf-8");
+      const html = readFileSync(join(PUBLIC_DIR, "index.php"), "utf-8");
       return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
     }
 

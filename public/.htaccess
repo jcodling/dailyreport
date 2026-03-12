@@ -1,5 +1,10 @@
 Options -Indexes
-DirectoryIndex index.html
+DirectoryIndex index.php index.html
+
+<Files "config.php">
+    Order deny,allow
+    Deny from all
+</Files>
 
 # Block direct HTTP access to markdown report files
 <Files "*.md">
@@ -8,7 +13,7 @@ DirectoryIndex index.html
 </Files>
 
 RewriteEngine On
-RewriteBase /
+RewriteBase /projects/dailyreport/
 
 # Pass through existing static files (index.html, api.php, etc.)
 RewriteCond %{REQUEST_FILENAME} -f

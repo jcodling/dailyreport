@@ -1,14 +1,13 @@
-import * as ftp from "basic-ftp";
+import SftpClient from "ssh2-sftp-client";
 import { existsSync } from "fs";
 import { join } from "path";
 
-// Required .env variables when FTP is enabled:
-//   FTP_HOST               — IONOS FTP hostname, e.g. ftp.yourdomain.com
-//   FTP_USER               — FTP username
-//   FTP_PASS               — FTP password
-//   FTP_REMOTE_REPORTS_DIR — Absolute FTP path to the reports dir,
-//                            e.g. /dailyreport/public/reports
-//                            Run `pwd` after connecting to find your FTP root.
+// Required .env variables:
+//   FTP_HOST               — IONOS SFTP hostname
+//   FTP_USER               — SFTP username
+//   FTP_PASS               — SFTP password
+//   FTP_REMOTE_REPORTS_DIR — Absolute SFTP path to the reports dir,
+//                            e.g. /projects/dailyreport/reports
 
 function dateStr(offsetDays = 0): string {
   const d = new Date();
@@ -16,25 +15,13 @@ function dateStr(offsetDays = 0): string {
   return d.toISOString().split("T")[0];
 }
 
-async function makeClient(): Promise<ftp.Client> {
+export async function makeClient(): Promise<SftpClient> {
   const host     = process.env.FTP_HOST!;
-  const user     = process.env.FTP_USER!;
+  const username = process.env.FTP_USER!;
   const password = process.env.FTP_PASS!;
 
-  const client = new ftp.Client();
-  client.ftp.verbose = false;
-
-  // IONOS supports FTPS (explicit TLS on port 21) — try secure first, fall back to plain
-  try {
-    await client.access({ host, user, password, secure: true });
-  } catch {
-    client.close();
-    const plain = new ftp.Client();
-    plain.ftp.verbose = false;
-    await plain.access({ host, user, password, secure: false });
-    return plain;
-  }
-
+  const client = new SftpClient();
+  await client.connect({ host, username, password, tryKeyboard: true });
   return client;
 }
 
@@ -51,22 +38,21 @@ export async function downloadYesterday(localReportsDir: string): Promise<boolea
 
   const client = await makeClient();
   try {
-    await client.downloadTo(localFile, remoteFile);
-    console.log(`  [ftp] ↓ Downloaded ${yesterday}.md`);
-    return true;
-  } catch (err: unknown) {
-    if (err instanceof ftp.FTPError && err.code === 550) {
-      console.log(`  [ftp] ${yesterday}.md not on server yet — using local copy`);
+    const exists = await client.exists(remoteFile);
+    if (!exists) {
+      console.log(`  [sftp] ${yesterday}.md not on server yet — using local copy`);
       return false;
     }
-    throw err;
+    await client.fastGet(remoteFile, localFile);
+    console.log(`  [sftp] ↓ Downloaded ${yesterday}.md`);
+    return true;
   } finally {
-    client.close();
+    await client.end();
   }
 }
 
 /**
- * Uploads today's generated report to IONOS public/reports/.
+ * Uploads today's generated report to IONOS reports/.
  */
 export async function uploadToday(localReportsDir: string): Promise<void> {
   const remoteDir = process.env.FTP_REMOTE_REPORTS_DIR!;
@@ -74,15 +60,15 @@ export async function uploadToday(localReportsDir: string): Promise<void> {
   const localFile = join(localReportsDir, `${today}.md`);
 
   if (!existsSync(localFile)) {
-    throw new Error(`[ftp] Report not found at ${localFile}`);
+    throw new Error(`[sftp] Report not found at ${localFile}`);
   }
 
   const client = await makeClient();
   try {
-    await client.ensureDir(remoteDir);
-    await client.uploadFrom(localFile, `${remoteDir}/${today}.md`);
-    console.log(`  [ftp] ↑ Uploaded ${today}.md`);
+    await client.mkdir(remoteDir, true);
+    await client.fastPut(localFile, `${remoteDir}/${today}.md`);
+    console.log(`  [sftp] ↑ Uploaded ${today}.md`);
   } finally {
-    client.close();
+    await client.end();
   }
 }
