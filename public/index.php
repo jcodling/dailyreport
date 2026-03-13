@@ -704,12 +704,26 @@ let pendingDelete = null;
 let mobDeleteConfirming = false;
 let mobDeleteTimer = null;
 
-// ── Settings (localStorage) ─────────────────────────────────────────
-const SETTINGS_KEY = 'dailyreport_settings';
-function loadSettings() {
-  try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch { return {}; }
+// ── Settings (server-side) ──────────────────────────────────────────
+let serverSettings = { maxDays: 0 };
+
+async function fetchSettings() {
+  try {
+    const res = await fetch('api/settings');
+    if (res.ok) serverSettings = await res.json();
+  } catch {}
 }
-function saveSettings(s) { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
+
+async function saveSettings(s) {
+  serverSettings = { ...serverSettings, ...s };
+  try {
+    await fetch('api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(serverSettings),
+    });
+  } catch {}
+}
 
 // ── Utils ──────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -976,17 +990,6 @@ async function deleteAllReports() {
   toast('All reports deleted');
 }
 
-async function pruneOldReports() {
-  const { maxDays } = loadSettings();
-  if (!maxDays || maxDays <= 0) return;
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - maxDays);
-  const toDelete = dates.filter(d => new Date(d) < cutoff);
-  for (const d of toDelete) {
-    const res = await fetch(`api/report/${d}`, { method: 'DELETE' });
-    if (res.ok) dates = dates.filter(x => x !== d);
-  }
-}
 
 function updateNavBtns() {
   const idx = dates.indexOf(currentDate);
@@ -1021,6 +1024,8 @@ async function loadReport(date) {
 }
 
 async function init() {
+  await fetchSettings();
+
   try {
     const res = await fetch('api/reports');
     dates = await res.json();
@@ -1028,7 +1033,6 @@ async function init() {
     dates = [];
   }
 
-  await pruneOldReports();
   buildDateUI();
   updateNavBtns();
 
@@ -1150,8 +1154,7 @@ $('mob-delete-btn').addEventListener('click', async () => {
 $('mob-settings-btn').addEventListener('click', () => {
   cancelPendingDelete();
   resetMobDelete();
-  const { maxDays } = loadSettings();
-  $('max-days-input').value = maxDays || '';
+  $('max-days-input').value = serverSettings.maxDays || '';
   $('confirm-delete-all').classList.remove('open');
   $('settings-overlay').classList.add('open');
 });
@@ -1160,8 +1163,7 @@ $('mob-settings-btn').addEventListener('click', () => {
 $('settings-btn').addEventListener('click', () => {
   cancelPendingDelete();
   resetMobDelete();
-  const { maxDays } = loadSettings();
-  $('max-days-input').value = maxDays || '';
+  $('max-days-input').value = serverSettings.maxDays || '';
   $('confirm-delete-all').classList.remove('open');
   $('settings-overlay').classList.add('open');
 });
@@ -1171,7 +1173,7 @@ $('settings-overlay').addEventListener('click', e => {
 });
 $('max-days-input').addEventListener('change', e => {
   const v = parseInt(e.target.value, 10);
-  saveSettings({ ...loadSettings(), maxDays: isNaN(v) ? 0 : Math.max(0, v) });
+  saveSettings({ maxDays: isNaN(v) ? 0 : Math.max(0, v) });
 });
 $('delete-all-btn').addEventListener('click', () => {
   $('confirm-count-text').textContent = `This will permanently delete all ${dates.length} report${dates.length !== 1 ? 's' : ''}.`;

@@ -23,6 +23,7 @@ if (empty($_SESSION['user_email']) || $_SESSION['user_email'] !== ALLOWED_EMAIL)
 
 // Reports live in public/reports/ — inside the web root but protected by .htaccess
 define('REPORTS_DIR', realpath(__DIR__ . '/reports'));
+define('SETTINGS_FILE', __DIR__ . '/settings.json');
 
 // ── Route dispatch ─────────────────────────────────────────────────────────
 $uri  = $_SERVER['REQUEST_URI'] ?? '/';
@@ -41,6 +42,10 @@ if ($method === 'GET' && $path === 'api/reports') {
     handle_delete($m[1]);
 } elseif ($method === 'POST' && $path === 'api/delete-all') {
     handle_delete_all();
+} elseif ($method === 'GET' && $path === 'api/settings') {
+    handle_get_settings();
+} elseif ($method === 'POST' && $path === 'api/settings') {
+    handle_save_settings();
 } else {
     http_response_code(404);
     echo json_encode(['error' => 'Not found']);
@@ -61,7 +66,47 @@ function handle_list(): void {
         }
     }
     rsort($dates);
+
+    // Prune reports older than maxDays if set
+    $settings = read_settings();
+    $maxDays = $settings['maxDays'] ?? 0;
+    if ($maxDays > 0) {
+        $cutoff = date('Y-m-d', strtotime("-{$maxDays} days"));
+        $keep = [];
+        foreach ($dates as $d) {
+            if ($d < $cutoff) {
+                $path = REPORTS_DIR . DIRECTORY_SEPARATOR . $d . '.md';
+                if (file_exists($path)) unlink($path);
+            } else {
+                $keep[] = $d;
+            }
+        }
+        $dates = $keep;
+    }
+
     echo json_encode($dates);
+}
+
+function handle_get_settings(): void {
+    echo json_encode(read_settings());
+}
+
+function handle_save_settings(): void {
+    $body = json_decode(file_get_contents('php://input'), true);
+    if (!is_array($body)) {
+        http_response_code(400); echo json_encode(['error' => 'Invalid JSON']); return;
+    }
+    $maxDays = isset($body['maxDays']) ? (int)$body['maxDays'] : 0;
+    if ($maxDays < 0) $maxDays = 0;
+    $settings = ['maxDays' => $maxDays];
+    file_put_contents(SETTINGS_FILE, json_encode($settings, JSON_PRETTY_PRINT));
+    echo json_encode(['ok' => true]);
+}
+
+function read_settings(): array {
+    if (!file_exists(SETTINGS_FILE)) return ['maxDays' => 0];
+    $data = json_decode(file_get_contents(SETTINGS_FILE), true);
+    return is_array($data) ? $data : ['maxDays' => 0];
 }
 
 function handle_report(string $date): void {

@@ -6,6 +6,11 @@ DirectoryIndex index.php index.html
     Deny from all
 </Files>
 
+<Files "settings.json">
+    Order deny,allow
+    Deny from all
+</Files>
+
 # Block direct HTTP access to markdown report files
 <Files "*.md">
     Order deny,allow
@@ -23,3 +28,5 @@ RewriteRule ^ - [L]
 RewriteRule ^api/reports$                                   api.php [L,QSA]
 RewriteRule ^api/report/([0-9]{4}-[0-9]{2}-[0-9]{2})$      api.php [L,QSA]
 RewriteRule ^api/feedback$                                  api.php [L,QSA]
+RewriteRule ^api/delete-all$                                api.php [L,QSA]
+RewriteRule ^api/settings$                                  api.php [L,QSA]
