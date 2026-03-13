@@ -228,6 +228,8 @@ a:hover { color: var(--link-hover); text-decoration: underline; }
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 14px;
+  cursor: pointer;
+  user-select: none;
 }
 
 .cat-icon { font-size: 18px; line-height: 1; }
@@ -1047,7 +1049,7 @@ async function init() {
 
 // ── Feedback ───────────────────────────────────────────────────────
 $('report-body').addEventListener('click', async e => {
-  const toggle = e.target.closest('.cat-toggle');
+  const toggle = e.target.closest('.cat-header');
   if (toggle) {
     const section = toggle.closest('.cat-section');
     const catName = section.dataset.cat;
