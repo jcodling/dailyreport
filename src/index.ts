@@ -7,6 +7,7 @@ import { fetchReddit } from "./fetchers/reddit";
 import { fetchRssFeeds } from "./fetchers/rss";
 import { parseFeedback } from "./feedback";
 import { prefilter } from "./prefilter";
+import { loadSeenUrls, saveSeenUrls, todayStr } from "./seen";
 import { curateWithClaude } from "./curator";
 import { renderReport } from "./report";
 import { downloadYesterday, uploadToday } from "./sftp";
@@ -70,7 +71,9 @@ async function main() {
 
   // Step 4: Pre-filter to top candidates per topic
   console.log("\nPre-filtering articles...");
-  const { filtered, stats } = prefilter(articles, config.topics, weights, config.articles_per_category);
+  const seenUrlsFile = join(PROJECT_ROOT, "config/seen-urls.json");
+  const seenUrls = loadSeenUrls(seenUrlsFile);
+  const { filtered, stats } = prefilter(articles, config.topics, weights, seenUrls, config.articles_per_category);
   console.log(stats);
 
   if (isDryRun) {
@@ -101,6 +104,13 @@ async function main() {
   // Step 6: Render and write report
   const reportPath = renderReport(curationResult, config.report_output_dir);
   console.log(`\nReport written to: ${reportPath}`);
+
+  // Save today's shown URLs for future deduplication
+  const shownUrls = [
+    ...curationResult.categories.flatMap((c) => c.articles.map((a) => a.url)),
+    curationResult.wildcard.url,
+  ];
+  saveSeenUrls(seenUrlsFile, todayStr(), shownUrls);
 
   // Step 7: FTP — upload today's report to IONOS
   if (ftpEnabled) {

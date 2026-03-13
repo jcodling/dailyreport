@@ -50,6 +50,7 @@ export function prefilter(
   articles: Article[],
   topics: Topic[],
   weights: FeedbackWeights,
+  seenUrls: Set<string>,
   articlesPerCategory: number
 ): { filtered: Article[]; stats: string } {
   const keep = articlesPerCategory * CANDIDATES_PER_TOPIC;
@@ -62,8 +63,11 @@ export function prefilter(
     return true;
   });
 
+  // Filter out articles already shown in previous reports
+  const fresh = deduped.filter((a) => !seenUrls.has(a.url));
+
   // Score every article against every topic
-  const scored: ScoredArticle[] = deduped.map((a) => {
+  const scored: ScoredArticle[] = fresh.map((a) => {
     const topicScores = topics.map((t) => scoreArticle(a, t.keywords, weights));
     return { ...a, topicScores, bestScore: Math.max(...topicScores) };
   });
@@ -95,7 +99,7 @@ export function prefilter(
   const filtered = scored.filter((a) => keptIds.has(a.url));
 
   const stats = [
-    `Pre-filter: ${deduped.length} deduped → ${filtered.length} kept`,
+    `Pre-filter: ${deduped.length} deduped → ${deduped.length - fresh.length} already seen → ${filtered.length} kept`,
     topics.map((t, i) => `  ${t.name}: ${perTopicCounts[i]} candidates`).join("\n"),
     `  Wildcard pool: ${wildcardCandidates.length}`,
   ].join("\n");
