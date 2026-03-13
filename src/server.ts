@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, readdirSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, readdirSync, existsSync, unlinkSync } from "fs";
 import { join } from "path";
 
 const PROJECT_ROOT = join(import.meta.dir, "..");
@@ -71,6 +71,24 @@ const server = Bun.serve({
       return new Response(readFileSync(filePath, "utf-8"), {
         headers: { "Content-Type": "text/plain; charset=utf-8" },
       });
+    }
+
+    // Delete single report
+    const deleteMatch = path.match(/^\/api\/report\/(\d{4}-\d{2}-\d{2})$/);
+    if (req.method === "DELETE" && deleteMatch) {
+      const filePath = join(REPORTS_DIR, `${deleteMatch[1]}.md`);
+      if (!existsSync(filePath)) return json({ error: "Not found" }, 404);
+      unlinkSync(filePath);
+      return json({ ok: true });
+    }
+
+    // Delete all reports
+    if (req.method === "POST" && path === "/api/delete-all") {
+      getAvailableDates().forEach(d => {
+        const f = join(REPORTS_DIR, `${d}.md`);
+        if (existsSync(f)) unlinkSync(f);
+      });
+      return json({ ok: true });
     }
 
     // Write feedback vote

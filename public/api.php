@@ -7,7 +7,7 @@ require_once __DIR__ . '/config.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -37,6 +37,10 @@ if ($method === 'GET' && $path === 'api/reports') {
     handle_report($m[1]);
 } elseif ($method === 'POST' && $path === 'api/feedback') {
     handle_feedback();
+} elseif ($method === 'DELETE' && preg_match('#^api/report/(\d{4}-\d{2}-\d{2})$#', $path, $m)) {
+    handle_delete($m[1]);
+} elseif ($method === 'POST' && $path === 'api/delete-all') {
+    handle_delete_all();
 } else {
     http_response_code(404);
     echo json_encode(['error' => 'Not found']);
@@ -128,6 +132,24 @@ function handle_feedback(): void {
     flock($fp, LOCK_UN);
     fclose($fp);
 
+    echo json_encode(['ok' => true]);
+}
+
+function handle_delete(string $date): void {
+    $path = safe_path($date);
+    if ($path === null || !file_exists($path)) {
+        http_response_code(404); echo json_encode(['error' => 'Not found']); return;
+    }
+    unlink($path);
+    echo json_encode(['ok' => true]);
+}
+
+function handle_delete_all(): void {
+    if (!REPORTS_DIR || !is_dir(REPORTS_DIR)) { echo json_encode(['ok' => true]); return; }
+    foreach (glob(REPORTS_DIR . '/*.md') as $f) {
+        $base = basename($f, '.md');
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $base)) unlink($f);
+    }
     echo json_encode(['ok' => true]);
 }
 

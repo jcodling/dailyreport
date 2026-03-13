@@ -478,6 +478,85 @@ a:hover { color: var(--link-hover); text-decoration: underline; }
   transform: translateX(-50%) translateY(0);
 }
 
+/* ── Settings button in sidebar brand ────────────────────────── */
+.sidebar-brand { justify-content: space-between; }
+.settings-btn {
+  background: none; border: none; color: var(--muted); font-size: 16px;
+  cursor: pointer; padding: 2px 4px; border-radius: 4px; line-height: 1;
+  transition: color .15s;
+}
+.settings-btn:hover { color: var(--text); }
+
+/* ── Delete button on date items ──────────────────────────────── */
+.date-btn { position: relative; }
+.delete-report-btn {
+  display: none;
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 13px; padding: 2px 4px; border-radius: 4px; margin-left: auto;
+  line-height: 1; transition: color .15s;
+}
+.date-btn:hover .delete-report-btn { display: inline-flex; }
+.delete-report-btn:hover { color: var(--dn); }
+
+/* ── Date confirm state ───────────────────────────────────────── */
+.date-confirm {
+  display: flex; align-items: center; gap: 6px; padding: 9px 16px;
+  background: var(--surface2); border-left: 2px solid var(--dn); padding-left: 14px;
+}
+.confirm-label { font-size: 12px; color: var(--dn); flex: 1; }
+.confirm-yes-btn, .confirm-no-btn {
+  background: none; border: 1px solid var(--border); border-radius: 4px;
+  font-size: 11px; padding: 2px 8px; cursor: pointer; font-family: var(--font);
+}
+.confirm-yes-btn { color: var(--dn); border-color: var(--dn-border); }
+.confirm-no-btn { color: var(--muted); }
+
+/* ── Settings modal ───────────────────────────────────────────── */
+#settings-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
+  z-index: 200; align-items: center; justify-content: center;
+}
+#settings-overlay.open { display: flex; }
+#settings-panel {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 28px; width: 360px; max-width: calc(100vw - 32px);
+}
+.settings-title {
+  font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 20px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.settings-close {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 18px; line-height: 1; padding: 2px;
+}
+.settings-row { margin-bottom: 20px; }
+.settings-label { font-size: 12px; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; display: block; }
+.settings-hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.settings-input {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text); font-size: 14px; padding: 8px 12px;
+  font-family: var(--font);
+}
+.settings-input:focus { outline: 2px solid var(--link); outline-offset: 1px; border-color: transparent; }
+.danger-btn {
+  width: 100%; padding: 10px; background: rgba(252,165,165,.1);
+  border: 1px solid var(--dn-border); border-radius: 7px; color: var(--dn);
+  font-size: 13px; font-family: var(--font); cursor: pointer; font-weight: 600;
+  transition: background .15s;
+}
+.danger-btn:hover { background: rgba(252,165,165,.2); }
+#confirm-delete-all { display: none; margin-top: 12px; padding: 14px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; }
+#confirm-delete-all.open { display: block; }
+#confirm-delete-all p { font-size: 13px; color: var(--subtext); margin-bottom: 12px; }
+.confirm-btns { display: flex; gap: 8px; }
+.confirm-cancel { flex: 1; padding: 8px; background: none; border: 1px solid var(--border);
+  border-radius: 6px; color: var(--muted); cursor: pointer; font-family: var(--font); font-size: 13px; }
+.confirm-delete { flex: 1; padding: 8px; background: var(--dn-bg);
+  border: 1px solid var(--dn-border); border-radius: 6px; color: var(--dn);
+  cursor: pointer; font-family: var(--font); font-size: 13px; font-weight: 600; }
+
 /* ── Responsive ───────────────────────────────────────────────── */
 @media (max-width: 768px) {
   #sidebar { display: none; }
@@ -497,6 +576,18 @@ a:hover { color: var(--link-hover); text-decoration: underline; }
   .article-title { font-size: 14px; }
   .wc-card { padding: 16px; }
 }
+
+/* Touch devices: always show trash btn (no hover state on touch) */
+@media (hover: none) {
+  .delete-report-btn { display: inline-flex; }
+}
+
+/* Mobile delete button confirm state */
+#mob-delete-btn.confirming {
+  color: var(--dn);
+  border-color: var(--dn-border);
+  background: var(--dn-bg);
+}
 </style>
 </head>
 <body>
@@ -504,7 +595,10 @@ a:hover { color: var(--link-hover); text-decoration: underline; }
 
   <!-- Desktop sidebar -->
   <aside id="sidebar">
-    <div class="sidebar-brand">📰 Daily Report</div>
+    <div class="sidebar-brand">
+      📰 Daily Report
+      <button class="settings-btn" id="settings-btn" title="Settings">⚙️</button>
+    </div>
     <nav id="date-list"></nav>
   </aside>
 
@@ -514,6 +608,8 @@ a:hover { color: var(--link-hover); text-decoration: underline; }
     <select id="mobile-date-select" aria-label="Select report date"></select>
     <button class="nav-btn" id="mob-prev" title="Previous">&#8592;</button>
     <button class="nav-btn" id="mob-next" title="Next">&#8594;</button>
+    <button class="nav-btn" id="mob-delete-btn" title="Delete this report">🗑</button>
+    <button class="nav-btn" id="mob-settings-btn" title="Settings">⚙️</button>
   </header>
 
   <!-- Main -->
@@ -525,6 +621,30 @@ a:hover { color: var(--link-hover); text-decoration: underline; }
         <button class="nav-btn" id="next-btn"><span class="btn-label">Next</span> &#8594;</button>
       </div>
       <div id="report-body"></div>
+    </div>
+  </div>
+</div>
+
+<div id="settings-overlay">
+  <div id="settings-panel">
+    <div class="settings-title">
+      Settings
+      <button class="settings-close" id="settings-close">✕</button>
+    </div>
+    <div class="settings-row">
+      <label class="settings-label" for="max-days-input">Max days to keep</label>
+      <input type="number" id="max-days-input" class="settings-input" min="0" max="365" placeholder="0 = keep all">
+      <p class="settings-hint">Reports older than this are deleted automatically on page load. Set to 0 to keep all.</p>
+    </div>
+    <div class="settings-row">
+      <button class="danger-btn" id="delete-all-btn">🗑 Delete all reports</button>
+      <div id="confirm-delete-all">
+        <p id="confirm-count-text">This will permanently delete all reports.</p>
+        <div class="confirm-btns">
+          <button class="confirm-cancel" id="confirm-cancel">Cancel</button>
+          <button class="confirm-delete" id="confirm-delete">Delete all</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -554,6 +674,16 @@ const CAT_ICONS = {
 let dates = [];
 let currentDate = null;
 let currentReport = null;
+let pendingDelete = null;
+let mobDeleteConfirming = false;
+let mobDeleteTimer = null;
+
+// ── Settings (localStorage) ─────────────────────────────────────────
+const SETTINGS_KEY = 'dailyreport_settings';
+function loadSettings() {
+  try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch { return {}; }
+}
+function saveSettings(s) { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
 
 // ── Utils ──────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -764,16 +894,75 @@ function renderReport(report) {
 // ── Sidebar / date list ────────────────────────────────────────────
 function buildDateUI() {
   // Desktop sidebar
-  $('date-list').innerHTML = dates.map(d => `
-    <button class="date-btn${d === currentDate ? ' active' : ''}" data-date="${d}">
-      <span class="dot"></span>
-      ${fmtDate(d)}
-    </button>`).join('');
+  $('date-list').innerHTML = dates.map(d => {
+    if (d === pendingDelete) {
+      return `
+        <div class="date-confirm" data-date="${d}">
+          <span class="confirm-label">Delete ${fmtDate(d)}?</span>
+          <button class="confirm-yes-btn" data-delete="${d}">Yes</button>
+          <button class="confirm-no-btn">No</button>
+        </div>`;
+    }
+    return `
+      <div class="date-btn${d === currentDate ? ' active' : ''}" data-date="${d}" role="button" tabindex="0">
+        <span class="dot"></span>
+        ${fmtDate(d)}
+        <button class="delete-report-btn" data-delete="${d}" title="Delete this report">🗑</button>
+      </div>`;
+  }).join('');
 
   // Mobile select
   $('mobile-date-select').innerHTML = dates.map(d =>
     `<option value="${d}"${d === currentDate ? ' selected' : ''}>${fmtDate(d)}</option>`
   ).join('');
+}
+
+function cancelPendingDelete() {
+  if (!pendingDelete) return;
+  pendingDelete = null;
+  buildDateUI();
+}
+
+function resetMobDelete() {
+  clearTimeout(mobDeleteTimer);
+  mobDeleteConfirming = false;
+  const btn = $('mob-delete-btn');
+  btn.textContent = '🗑';
+  btn.classList.remove('confirming');
+}
+
+async function confirmDeleteReport(date) {
+  pendingDelete = null;
+  const res = await fetch(`api/report/${date}`, { method: 'DELETE' });
+  if (!res.ok) { toast('⚠️ Failed to delete report'); buildDateUI(); return; }
+  dates = dates.filter(d => d !== date);
+  if (currentDate === date) {
+    const next = dates[0] || null;
+    if (next) { loadReport(next); } else { currentDate = null; buildDateUI(); updateNavBtns(); renderReport(null); }
+  } else {
+    buildDateUI(); updateNavBtns();
+  }
+  toast('Report deleted');
+}
+
+async function deleteAllReports() {
+  const res = await fetch('api/delete-all', { method: 'POST' });
+  if (!res.ok) { toast('⚠️ Failed to delete reports'); return; }
+  dates = []; currentDate = null; currentReport = null;
+  buildDateUI(); updateNavBtns(); renderReport(null);
+  toast('All reports deleted');
+}
+
+async function pruneOldReports() {
+  const { maxDays } = loadSettings();
+  if (!maxDays || maxDays <= 0) return;
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - maxDays);
+  const toDelete = dates.filter(d => new Date(d) < cutoff);
+  for (const d of toDelete) {
+    const res = await fetch(`api/report/${d}`, { method: 'DELETE' });
+    if (res.ok) dates = dates.filter(x => x !== d);
+  }
 }
 
 function updateNavBtns() {
@@ -782,6 +971,8 @@ function updateNavBtns() {
   $('next-btn').disabled = idx <= 0;
   $('mob-prev').disabled = idx >= dates.length - 1;
   $('mob-next').disabled = idx <= 0;
+  $('mob-delete-btn').disabled = !currentDate;
+  resetMobDelete();
 }
 
 // ── Data loading ───────────────────────────────────────────────────
@@ -813,6 +1004,7 @@ async function init() {
     dates = [];
   }
 
+  await pruneOldReports();
   buildDateUI();
   updateNavBtns();
 
@@ -888,8 +1080,69 @@ $('mob-prev').addEventListener('click', () => navigate(1));
 $('mob-next').addEventListener('click', () => navigate(-1));
 $('mobile-date-select').addEventListener('change', e => loadReport(e.target.value));
 $('date-list').addEventListener('click', e => {
+  const del = e.target.closest('.delete-report-btn');
+  if (del) { e.stopPropagation(); pendingDelete = del.dataset.delete; buildDateUI(); return; }
+  const yes = e.target.closest('.confirm-yes-btn');
+  if (yes) { e.stopPropagation(); confirmDeleteReport(yes.dataset.delete); return; }
+  const no = e.target.closest('.confirm-no-btn');
+  if (no) { e.stopPropagation(); cancelPendingDelete(); return; }
   const btn = e.target.closest('.date-btn');
-  if (btn) loadReport(btn.dataset.date);
+  if (btn && btn.dataset.date) { cancelPendingDelete(); loadReport(btn.dataset.date); }
+});
+
+$('date-list').addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const btn = e.target.closest('.date-btn');
+  if (btn && btn.dataset.date) { e.preventDefault(); cancelPendingDelete(); loadReport(btn.dataset.date); }
+});
+
+$('mob-delete-btn').addEventListener('click', async () => {
+  if (!currentDate) return;
+  if (!mobDeleteConfirming) {
+    mobDeleteConfirming = true;
+    $('mob-delete-btn').textContent = 'Delete?';
+    $('mob-delete-btn').classList.add('confirming');
+    mobDeleteTimer = setTimeout(resetMobDelete, 3000);
+  } else {
+    resetMobDelete();
+    await confirmDeleteReport(currentDate);
+  }
+});
+
+$('mob-settings-btn').addEventListener('click', () => {
+  cancelPendingDelete();
+  resetMobDelete();
+  const { maxDays } = loadSettings();
+  $('max-days-input').value = maxDays || '';
+  $('confirm-delete-all').classList.remove('open');
+  $('settings-overlay').classList.add('open');
+});
+
+// ── Settings modal ──────────────────────────────────────────────────
+$('settings-btn').addEventListener('click', () => {
+  cancelPendingDelete();
+  resetMobDelete();
+  const { maxDays } = loadSettings();
+  $('max-days-input').value = maxDays || '';
+  $('confirm-delete-all').classList.remove('open');
+  $('settings-overlay').classList.add('open');
+});
+$('settings-close').addEventListener('click', () => $('settings-overlay').classList.remove('open'));
+$('settings-overlay').addEventListener('click', e => {
+  if (e.target === $('settings-overlay')) $('settings-overlay').classList.remove('open');
+});
+$('max-days-input').addEventListener('change', e => {
+  const v = parseInt(e.target.value, 10);
+  saveSettings({ ...loadSettings(), maxDays: isNaN(v) ? 0 : Math.max(0, v) });
+});
+$('delete-all-btn').addEventListener('click', () => {
+  $('confirm-count-text').textContent = `This will permanently delete all ${dates.length} report${dates.length !== 1 ? 's' : ''}.`;
+  $('confirm-delete-all').classList.add('open');
+});
+$('confirm-cancel').addEventListener('click', () => $('confirm-delete-all').classList.remove('open'));
+$('confirm-delete').addEventListener('click', async () => {
+  $('settings-overlay').classList.remove('open');
+  await deleteAllReports();
 });
 
 document.addEventListener('keydown', e => {
