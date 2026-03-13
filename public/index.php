@@ -241,10 +241,33 @@ a:hover { color: var(--link-hover); text-decoration: underline; }
 }
 
 .cat-count {
-  margin-left: auto;
   font-size: 11px;
   color: var(--border2);
 }
+
+.cat-toggle {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 18px; padding: 0 4px; line-height: 1;
+  transition: color .15s;
+  display: flex; align-items: center;
+  margin-left: auto;
+}
+.cat-toggle:hover { color: var(--text); }
+.cat-toggle .toggle-icon { display: inline-block; transition: transform .2s; }
+.cat-section.expanded .cat-toggle .toggle-icon { transform: rotate(90deg); }
+.cat-section.expanded .cat-toggle { color: var(--text); }
+
+/* Collapsed state (default) */
+.cat-section .article-reason { display: none; }
+.cat-section .vote-row       { display: none; }
+.cat-section .source-name    { display: none; }
+.cat-section:not(.expanded) .article-card { padding: 8px 18px; margin-bottom: 4px; }
+
+/* Expanded state */
+.cat-section.expanded .article-reason { display: block; }
+.cat-section.expanded .vote-row       { display: flex; }
+.cat-section.expanded .source-name    { display: inline; }
+.cat-section.expanded .article-card   { padding: 16px 18px; margin-bottom: 10px; }
 
 /* ── Article card ─────────────────────────────────────────────── */
 .article-card {
@@ -673,6 +696,7 @@ const CAT_ICONS = {
 // ── State ──────────────────────────────────────────────────────────
 let dates = [];
 let currentDate = null;
+const expandedCats = new Set();
 let currentReport = null;
 let pendingDelete = null;
 let mobDeleteConfirming = false;
@@ -812,22 +836,18 @@ function renderSkeleton() {
 
 function renderArticle(a) {
   const cls = a.vote === 1 ? 'article-card voted-up' : a.vote === -1 ? 'article-card voted-dn' : 'article-card';
+  const fav = faviconUrl(a.url);
   return `
     <article class="${cls}" data-line="${a.lineIndex}">
-      <div class="article-num">${a.number}</div>
       <div class="article-body">
         <div class="article-title-row">
           <a class="article-title" href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.title)}</a>
-          <span class="source-badge" title="${esc(a.source)}">${faviconUrl(a.url) ? `<img src="${faviconUrl(a.url)}" alt="">` : ''}${esc(a.source)}</span>
+          <span class="source-badge" title="${esc(a.source)}">${fav ? `<img src="${fav}" alt="">` : ''}<span class="source-name">${esc(a.source)}</span></span>
         </div>
         <p class="article-reason">${esc(a.reason)}</p>
         <div class="vote-row">
-          <button class="vote-btn up${a.vote===1?' active':''}" data-vote="1">
-            <span class="icon">👍</span><span class="label">Useful</span>
-          </button>
-          <button class="vote-btn dn${a.vote===-1?' active':''}" data-vote="-1">
-            <span class="icon">👎</span><span class="label">Not for me</span>
-          </button>
+          <button class="vote-btn up${a.vote===1?' active':''}" data-vote="1"><span class="icon">👍</span><span class="label">Useful</span></button>
+          <button class="vote-btn dn${a.vote===-1?' active':''}" data-vote="-1"><span class="icon">👎</span><span class="label">Not for me</span></button>
         </div>
       </div>
     </article>`;
@@ -876,11 +896,12 @@ function renderReport(report) {
   for (const cat of report.categories) {
     const icon = catIcon(cat.name);
     html += `
-      <section class="cat-section">
+      <section class="cat-section" data-cat="${esc(cat.name)}">
         <div class="cat-header">
           <span class="cat-icon">${icon}</span>
           <span class="cat-title">${esc(cat.name)}</span>
           <span class="cat-count">${cat.articles.length} articles</span>
+          <button class="cat-toggle" title="Expand section"><span class="toggle-icon">›</span></button>
         </div>
         ${cat.articles.map(renderArticle).join('')}
       </section>`;
@@ -978,6 +999,7 @@ function updateNavBtns() {
 // ── Data loading ───────────────────────────────────────────────────
 async function loadReport(date) {
   currentDate = date;
+  expandedCats.clear();
   buildDateUI();
   updateNavBtns();
 
@@ -1025,6 +1047,20 @@ async function init() {
 
 // ── Feedback ───────────────────────────────────────────────────────
 $('report-body').addEventListener('click', async e => {
+  const toggle = e.target.closest('.cat-toggle');
+  if (toggle) {
+    const section = toggle.closest('.cat-section');
+    const catName = section.dataset.cat;
+    if (expandedCats.has(catName)) {
+      expandedCats.delete(catName);
+      section.classList.remove('expanded');
+    } else {
+      expandedCats.add(catName);
+      section.classList.add('expanded');
+    }
+    return;
+  }
+
   const btn = e.target.closest('.vote-btn');
   if (!btn) return;
 
