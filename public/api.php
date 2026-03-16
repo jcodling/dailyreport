@@ -24,6 +24,7 @@ if (empty($_SESSION['user_email']) || $_SESSION['user_email'] !== ALLOWED_EMAIL)
 // Reports live in public/reports/ — inside the web root but protected by .htaccess
 define('REPORTS_DIR', realpath(__DIR__ . '/reports'));
 define('SETTINGS_FILE', __DIR__ . '/settings.json');
+define('BLACKLIST_FILE', __DIR__ . '/blacklist.json');
 
 // ── Route dispatch ─────────────────────────────────────────────────────────
 $uri  = $_SERVER['REQUEST_URI'] ?? '/';
@@ -46,6 +47,12 @@ if ($method === 'GET' && $path === 'api/reports') {
     handle_get_settings();
 } elseif ($method === 'POST' && $path === 'api/settings') {
     handle_save_settings();
+} elseif ($method === 'GET' && $path === 'api/blacklist') {
+    handle_get_blacklist();
+} elseif ($method === 'POST' && $path === 'api/blacklist') {
+    handle_add_blacklist();
+} elseif ($method === 'DELETE' && $path === 'api/blacklist') {
+    handle_remove_blacklist();
 } else {
     http_response_code(404);
     echo json_encode(['error' => 'Not found']);
@@ -107,6 +114,46 @@ function read_settings(): array {
     if (!file_exists(SETTINGS_FILE)) return ['maxDays' => 0];
     $data = json_decode(file_get_contents(SETTINGS_FILE), true);
     return is_array($data) ? $data : ['maxDays' => 0];
+}
+
+function handle_get_blacklist(): void {
+    if (!file_exists(BLACKLIST_FILE)) { echo json_encode([]); return; }
+    $data = json_decode(file_get_contents(BLACKLIST_FILE), true);
+    echo json_encode(is_array($data) ? $data : []);
+}
+
+function handle_add_blacklist(): void {
+    $body = json_decode(file_get_contents('php://input'), true);
+    if (!isset($body['domain']) || !is_string($body['domain'])) {
+        http_response_code(400); echo json_encode(['error' => 'Missing domain']); return;
+    }
+    $domain = $body['domain'];
+    $blacklist = [];
+    if (file_exists(BLACKLIST_FILE)) {
+        $data = json_decode(file_get_contents(BLACKLIST_FILE), true);
+        if (is_array($data)) $blacklist = $data;
+    }
+    if (!in_array($domain, $blacklist, true)) {
+        $blacklist[] = $domain;
+        file_put_contents(BLACKLIST_FILE, json_encode($blacklist, JSON_PRETTY_PRINT));
+    }
+    echo json_encode(['ok' => true]);
+}
+
+function handle_remove_blacklist(): void {
+    $body = json_decode(file_get_contents('php://input'), true);
+    if (!isset($body['domain']) || !is_string($body['domain'])) {
+        http_response_code(400); echo json_encode(['error' => 'Missing domain']); return;
+    }
+    $domain = $body['domain'];
+    $blacklist = [];
+    if (file_exists(BLACKLIST_FILE)) {
+        $data = json_decode(file_get_contents(BLACKLIST_FILE), true);
+        if (is_array($data)) $blacklist = $data;
+    }
+    $filtered = array_values(array_filter($blacklist, fn($d) => $d !== $domain));
+    file_put_contents(BLACKLIST_FILE, json_encode($filtered, JSON_PRETTY_PRINT));
+    echo json_encode(['ok' => true]);
 }
 
 function handle_report(string $date): void {

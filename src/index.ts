@@ -10,7 +10,7 @@ import { prefilter } from "./prefilter";
 import { loadSeenUrls, saveSeenUrls, todayStr } from "./seen";
 import { curateWithClaude } from "./curator";
 import { renderReport } from "./report";
-import { downloadYesterday, uploadToday } from "./sftp";
+import { downloadYesterday, uploadToday, downloadBlacklist } from "./sftp";
 
 const PROJECT_ROOT = join(import.meta.dir, "..");
 const isDryRun = process.argv.includes("--dry-run");
@@ -48,9 +48,10 @@ async function main() {
 
   // Step 1: FTP — download yesterday's report (with any votes the user added)
   if (ftpEnabled && !isDryRun) {
-    console.log("\nFTP: Syncing yesterday's report...");
+    console.log("\nFTP: Syncing yesterday's report and blacklist...");
     try {
       await downloadYesterday(reportsDir);
+      await downloadBlacklist(join(PROJECT_ROOT, "config/blacklist.json"));
     } catch (err) {
       console.warn("  [ftp] Download failed, continuing with local copy:", err);
     }

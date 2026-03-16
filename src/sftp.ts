@@ -52,6 +52,31 @@ export async function downloadYesterday(localReportsDir: string): Promise<boolea
 }
 
 /**
+ * Downloads blacklist.json from IONOS.
+ * Overwrites the local copy so prefilter.ts applies user blacklists.
+ */
+export async function downloadBlacklist(localPath: string): Promise<boolean> {
+  const remoteDir = process.env.FTP_REMOTE_REPORTS_DIR!;
+  const remoteFile = remoteDir.replace(/\/reports\/?$/, '') + '/blacklist.json';
+
+  const client = await makeClient();
+  try {
+    const exists = await client.exists(remoteFile);
+    if (!exists) {
+      return false;
+    }
+    await client.fastGet(remoteFile, localPath);
+    console.log(`  [sftp] ↓ Downloaded blacklist.json`);
+    return true;
+  } catch (err) {
+    console.warn(`  [sftp] Failed to download blacklist.json:`, err);
+    return false;
+  } finally {
+    await client.end();
+  }
+}
+
+/**
  * Uploads today's generated report to IONOS reports/.
  */
 export async function uploadToday(localReportsDir: string): Promise<void> {
