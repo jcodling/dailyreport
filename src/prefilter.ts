@@ -51,6 +51,7 @@ export function prefilter(
   topics: Topic[],
   weights: FeedbackWeights,
   seenUrls: Set<string>,
+  blacklistDomains: Set<string>,
   articlesPerCategory: number
 ): { filtered: Article[]; stats: string } {
   const keep = articlesPerCategory * CANDIDATES_PER_TOPIC;
@@ -63,8 +64,17 @@ export function prefilter(
     return true;
   });
 
-  // Filter out articles already shown in previous reports
-  const fresh = deduped.filter((a) => !seenUrls.has(a.url));
+  // Filter out articles already shown in previous reports or in the blacklist
+  const fresh = deduped.filter((a) => {
+    if (seenUrls.has(a.url)) return false;
+    try {
+      const hostname = new URL(a.url).hostname.replace(/^www\./, "");
+      if (blacklistDomains.has(hostname)) return false;
+    } catch {
+      // Invalid URL? Skip or just let it through
+    }
+    return true;
+  });
 
   // Score every article against every topic
   const scored: ScoredArticle[] = fresh.map((a) => {

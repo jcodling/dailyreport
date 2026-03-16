@@ -73,7 +73,17 @@ async function main() {
   console.log("\nPre-filtering articles...");
   const seenUrlsFile = join(PROJECT_ROOT, "config/seen-urls.json");
   const seenUrls = loadSeenUrls(seenUrlsFile);
-  const { filtered, stats } = prefilter(articles, config.topics, weights, seenUrls, config.articles_per_category);
+  
+  const blacklistFile = join(PROJECT_ROOT, "config/blacklist.json");
+  let blacklistDomains = new Set<string>();
+  if (require("fs").existsSync(blacklistFile)) {
+    try {
+      const parsed = JSON.parse(require("fs").readFileSync(blacklistFile, "utf-8"));
+      blacklistDomains = new Set(parsed);
+    } catch {}
+  }
+
+  const { filtered, stats } = prefilter(articles, config.topics, weights, seenUrls, blacklistDomains, config.articles_per_category);
   console.log(stats);
 
   if (isDryRun) {

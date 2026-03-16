@@ -662,6 +662,13 @@ a:hover { color: var(--link-hover); text-decoration: underline; }
       <p class="settings-hint">Reports older than this are deleted automatically on page load. Set to 0 to keep all.</p>
     </div>
     <div class="settings-row">
+      <label class="settings-label">Blacklisted Domains</label>
+      <div id="blacklist-container" class="settings-input" style="padding: 12px; min-height: 48px; max-height: 150px; overflow-y: auto;">
+        <!-- Populated via JS -->
+      </div>
+      <p class="settings-hint">Domains listed here will never be suggested in future reports.</p>
+    </div>
+    <div class="settings-row">
       <button class="danger-btn" id="delete-all-btn">🗑 Delete all reports</button>
       <div id="confirm-delete-all">
         <p id="confirm-count-text">This will permanently delete all reports.</p>
@@ -864,6 +871,7 @@ function renderArticle(a) {
         <div class="vote-row">
           <button class="vote-btn up${a.vote===1?' active':''}" data-vote="1"><span class="icon">👍</span><span class="label">Useful</span></button>
           <button class="vote-btn dn${a.vote===-1?' active':''}" data-vote="-1"><span class="icon">👎</span><span class="label">Not for me</span></button>
+          <button class="vote-btn bl" data-action="blacklist"><span class="icon">⛔</span><span class="label">Paywall / Blacklist</span></button>
         </div>
       </div>
     </article>`;
@@ -1073,6 +1081,28 @@ $('report-body').addEventListener('click', async e => {
   const card = btn.closest('[data-line]');
   if (!card) return;
 
+  // Handle blacklist button
+  if (btn.dataset.action === 'blacklist') {
+    const urlLink = card.querySelector('a.article-title') || card.querySelector('a.wc-title');
+    if (!urlLink) return;
+    try {
+      const hostname = new URL(urlLink.href).hostname.replace(/^www\./, '');
+      const res = await fetch('api/blacklist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain: hostname }),
+      });
+      if (res.ok) {
+        toast('⛔ Added ' + hostname + ' to blacklist');
+      } else {
+        toast('⚠️ Failed to blacklist');
+      }
+    } catch {
+      toast('⚠️ Error processing domain');
+    }
+    return;
+  }
+
   const lineIndex = parseInt(card.dataset.line, 10);
   const clickedVote = parseInt(btn.dataset.vote, 10);
   const currentVote = card.querySelector('.vote-btn.up.active') ? 1
@@ -1080,7 +1110,7 @@ $('report-body').addEventListener('click', async e => {
   const newVote = currentVote === clickedVote ? 0 : clickedVote;
 
   // Optimistic update
-  card.querySelectorAll('.vote-btn').forEach(b => b.classList.remove('active'));
+  card.querySelectorAll('.vote-btn:not(.bl)').forEach(b => b.classList.remove('active'));
   if (newVote !== 0) card.querySelector(`[data-vote="${newVote}"]`).classList.add('active');
   card.classList.remove('voted-up', 'voted-dn');
   if (newVote === 1) card.classList.add('voted-up');
@@ -1100,7 +1130,7 @@ $('report-body').addEventListener('click', async e => {
     toast(msg);
   } catch {
     // Revert on failure
-    card.querySelectorAll('.vote-btn').forEach(b => b.classList.remove('active'));
+    card.querySelectorAll('.vote-btn:not(.bl)').forEach(b => b.classList.remove('active'));
     if (currentVote !== 0) card.querySelector(`[data-vote="${currentVote}"]`).classList.add('active');
     card.classList.remove('voted-up', 'voted-dn');
     if (currentVote === 1) card.classList.add('voted-up');
@@ -1160,11 +1190,54 @@ $('mob-settings-btn').addEventListener('click', () => {
 });
 
 // ── Settings modal ──────────────────────────────────────────────────
+async function loadBlacklistUI() {
+  const container = $('blacklist-container');
+  container.innerHTML = '<span style="color:var(--muted);font-size:13px;">Loading...</span>';
+  try {
+    const res = await fetch('api/blacklist');
+    const domains = await res.json();
+    if (domains.length === 0) {
+      container.innerHTML = '<span style="color:var(--muted);font-size:13px;">No blacklisted domains.</span>';
+      return;
+    }
+    container.innerHTML = domains.map(d => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px;">
+        <span>${esc(d)}</span>
+        <button class="remove-blacklist-btn" data-domain="${esc(d)}" style="background:none;border:none;color:var(--dn);cursor:pointer;font-size:12px;">Remove</button>
+      </div>
+    `).join('');
+  } catch {
+    container.innerHTML = '<span style="color:var(--dn);font-size:13px;">Failed to load.</span>';
+  }
+}
+
+$('blacklist-container')?.addEventListener('click', async e => {
+  const btn = e.target.closest('.remove-blacklist-btn');
+  if (!btn) return;
+  const domain = btn.dataset.domain;
+  btn.textContent = '...';
+  try {
+    const res = await fetch('api/blacklist', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain }),
+    });
+    if (res.ok) {
+      loadBlacklistUI();
+      toast('Domain removed from blacklist');
+    }
+  } catch {
+    toast('⚠️ Failed to remove domain');
+    btn.textContent = 'Remove';
+  }
+});
+
 $('settings-btn').addEventListener('click', () => {
   cancelPendingDelete();
   resetMobDelete();
   $('max-days-input').value = serverSettings.maxDays || '';
   $('confirm-delete-all').classList.remove('open');
+  loadBlacklistUI();
   $('settings-overlay').classList.add('open');
 });
 $('settings-close').addEventListener('click', () => $('settings-overlay').classList.remove('open'));

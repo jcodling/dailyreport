@@ -110,6 +110,58 @@ const server = Bun.serve({
       }
     }
 
+    // Blacklist GET
+    if (req.method === "GET" && path === "/api/blacklist") {
+      const blacklistFile = join(PROJECT_ROOT, "config/blacklist.json");
+      if (!existsSync(blacklistFile)) return json([]);
+      try {
+        const blacklist = JSON.parse(readFileSync(blacklistFile, "utf-8"));
+        return json(blacklist);
+      } catch {
+        return json([]);
+      }
+    }
+
+    // Blacklist POST (Add domain)
+    if (req.method === "POST" && path === "/api/blacklist") {
+      let body: { domain?: string };
+      try { body = await req.json(); }
+      catch { return json({ error: "Invalid JSON" }, 400); }
+
+      if (!body.domain) return json({ error: "Missing domain" }, 400);
+
+      const blacklistFile = join(PROJECT_ROOT, "config/blacklist.json");
+      let blacklist: string[] = [];
+      if (existsSync(blacklistFile)) {
+        try { blacklist = JSON.parse(readFileSync(blacklistFile, "utf-8")); } catch {}
+      }
+
+      if (!blacklist.includes(body.domain)) {
+        blacklist.push(body.domain);
+        writeFileSync(blacklistFile, JSON.stringify(blacklist, null, 2));
+      }
+      return json({ ok: true });
+    }
+
+    // Blacklist DELETE (Remove domain)
+    if (req.method === "DELETE" && path === "/api/blacklist") {
+      let body: { domain?: string };
+      try { body = await req.json(); }
+      catch { return json({ error: "Invalid JSON" }, 400); }
+
+      if (!body.domain) return json({ error: "Missing domain" }, 400);
+
+      const blacklistFile = join(PROJECT_ROOT, "config/blacklist.json");
+      let blacklist: string[] = [];
+      if (existsSync(blacklistFile)) {
+        try { blacklist = JSON.parse(readFileSync(blacklistFile, "utf-8")); } catch {}
+      }
+
+      const filtered = blacklist.filter((d) => d !== body.domain);
+      writeFileSync(blacklistFile, JSON.stringify(filtered, null, 2));
+      return json({ ok: true });
+    }
+
     return new Response("Not found", { status: 404 });
   },
 });
