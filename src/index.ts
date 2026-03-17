@@ -45,6 +45,10 @@ async function fetchAll(config: Config) {
 async function main() {
   const config = loadConfig();
   const reportsDir = join(PROJECT_ROOT, config.report_output_dir);
+  const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  log(`\n${'─'.repeat(60)}`);
+  log(`  📰 Daily Report — ${dateLabel}`);
+  log(`${'─'.repeat(60)}\n`);
   log(`Loaded config: ${config.topics.length} topics, ${config.articles_per_category} articles/category`);
 
   // Step 1: FTP — download yesterday's report (with any votes the user added)
