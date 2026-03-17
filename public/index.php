@@ -287,7 +287,8 @@ a:hover { color: var(--link-hover); text-decoration: underline; }
   box-shadow: 0 2px 12px rgba(0,0,0,.2);
 }
 .article-card.voted-up {
-  border-color: var(--up-border);
+  border-color: rgba(134,239,172,.65);
+  box-shadow: 0 0 0 1px rgba(134,239,172,.25) inset;
   background: linear-gradient(135deg, var(--surface) 85%, var(--up-bg));
 }
 .article-card.voted-dn {
