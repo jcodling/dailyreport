@@ -294,6 +294,11 @@ a:hover { color: var(--link-hover); text-decoration: underline; }
   border-color: var(--dn-border);
   background: linear-gradient(135deg, var(--surface) 85%, var(--dn-bg));
 }
+.article-card.blacklisted {
+  border-color: rgba(252,165,165,.6);
+  box-shadow: 0 0 0 1px rgba(252,165,165,.3) inset;
+  background: linear-gradient(135deg, var(--surface) 85%, rgba(252,165,165,.06));
+}
 
 .article-num {
   font-size: 12px;
@@ -385,6 +390,11 @@ a:hover { color: var(--link-hover); text-decoration: underline; }
 .vote-btn.dn.active {
   background: var(--dn-bg);
   border-color: var(--dn-border);
+  color: var(--dn);
+}
+.vote-btn.bl.active {
+  background: rgba(252,165,165,.12);
+  border-color: rgba(252,165,165,.5);
   color: var(--dn);
 }
 
@@ -710,6 +720,7 @@ let currentReport = null;
 let pendingDelete = null;
 let mobDeleteConfirming = false;
 let mobDeleteTimer = null;
+let blacklistedDomains = new Set();
 
 // ── Settings (server-side) ──────────────────────────────────────────
 let serverSettings = { maxDays: 0 };
@@ -857,8 +868,17 @@ function renderSkeleton() {
     </div>`).join('');
 }
 
+function getArticleDomain(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; }
+}
+
 function renderArticle(a) {
-  const cls = a.vote === 1 ? 'article-card voted-up' : a.vote === -1 ? 'article-card voted-dn' : 'article-card';
+  const domain = getArticleDomain(a.url);
+  const isBlacklisted = blacklistedDomains.has(domain);
+  let cls = 'article-card';
+  if (a.vote === 1) cls += ' voted-up';
+  if (a.vote === -1) cls += ' voted-dn';
+  if (isBlacklisted) cls += ' blacklisted';
   const fav = faviconUrl(a.url);
   return `
     <article class="${cls}" data-line="${a.lineIndex}">
@@ -871,7 +891,7 @@ function renderArticle(a) {
         <div class="vote-row">
           <button class="vote-btn up${a.vote===1?' active':''}" data-vote="1"><span class="icon">👍</span><span class="label">Useful</span></button>
           <button class="vote-btn dn${a.vote===-1?' active':''}" data-vote="-1"><span class="icon">👎</span><span class="label">Not for me</span></button>
-          <button class="vote-btn bl" data-action="blacklist"><span class="icon">⛔</span><span class="label">Paywall / Blacklist</span></button>
+          <button class="vote-btn bl${isBlacklisted?' active':''}" data-action="blacklist"><span class="icon">⛔</span><span class="label">Paywall / Blacklist</span></button>
         </div>
       </div>
     </article>`;
@@ -1031,8 +1051,18 @@ async function loadReport(date) {
   }
 }
 
+async function fetchBlacklist() {
+  try {
+    const res = await fetch('api/blacklist');
+    if (res.ok) {
+      const domains = await res.json();
+      blacklistedDomains = new Set(domains);
+    }
+  } catch {}
+}
+
 async function init() {
-  await fetchSettings();
+  await Promise.all([fetchSettings(), fetchBlacklist()]);
 
   try {
     const res = await fetch('api/reports');
@@ -1093,6 +1123,20 @@ $('report-body').addEventListener('click', async e => {
         body: JSON.stringify({ domain: hostname }),
       });
       if (res.ok) {
+        // Optimistic UI: mark this card and all cards from same domain
+        blacklistedDomains.add(hostname);
+        document.querySelectorAll('[data-line]').forEach(c => {
+          const link = c.querySelector('a.article-title') || c.querySelector('a.wc-title');
+          if (!link) return;
+          try {
+            const d = new URL(link.href).hostname.replace(/^www\./, '');
+            if (d === hostname) {
+              c.classList.add('blacklisted');
+              const blBtn = c.querySelector('.vote-btn.bl');
+              if (blBtn) blBtn.classList.add('active');
+            }
+          } catch {}
+        });
         toast('⛔ Added ' + hostname + ' to blacklist');
       } else {
         toast('⚠️ Failed to blacklist');
