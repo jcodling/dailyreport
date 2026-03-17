@@ -1,6 +1,7 @@
 import SftpClient from "ssh2-sftp-client";
 import { existsSync } from "fs";
 import { join } from "path";
+import { log, warn } from "./log";
 
 // Required .env variables:
 //   FTP_HOST               — IONOS SFTP hostname
@@ -40,11 +41,11 @@ export async function downloadYesterday(localReportsDir: string): Promise<boolea
   try {
     const exists = await client.exists(remoteFile);
     if (!exists) {
-      console.log(`  [sftp] ${yesterday}.md not on server yet — using local copy`);
+      log(`  [sftp] ${yesterday}.md not on server yet — using local copy`);
       return false;
     }
     await client.fastGet(remoteFile, localFile);
-    console.log(`  [sftp] ↓ Downloaded ${yesterday}.md`);
+    log(`  [sftp] ↓ Downloaded ${yesterday}.md`);
     return true;
   } finally {
     await client.end();
@@ -66,10 +67,10 @@ export async function downloadBlacklist(localPath: string): Promise<boolean> {
       return false;
     }
     await client.fastGet(remoteFile, localPath);
-    console.log(`  [sftp] ↓ Downloaded blacklist.json`);
+    log(`  [sftp] ↓ Downloaded blacklist.json`);
     return true;
   } catch (err) {
-    console.warn(`  [sftp] Failed to download blacklist.json:`, err);
+    warn(`  [sftp] Failed to download blacklist.json:`, err);
     return false;
   } finally {
     await client.end();
@@ -92,7 +93,7 @@ export async function uploadToday(localReportsDir: string): Promise<void> {
   try {
     await client.mkdir(remoteDir, true);
     await client.fastPut(localFile, `${remoteDir}/${today}.md`);
-    console.log(`  [sftp] ↑ Uploaded ${today}.md`);
+    log(`  [sftp] ↑ Uploaded ${today}.md`);
   } finally {
     await client.end();
   }

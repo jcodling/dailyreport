@@ -11,6 +11,7 @@ import { loadSeenUrls, saveSeenUrls, todayStr } from "./seen";
 import { curateWithClaude } from "./curator";
 import { renderReport } from "./report";
 import { downloadYesterday, uploadToday, downloadBlacklist } from "./sftp";
+import { log, warn } from "./log";
 
 const PROJECT_ROOT = join(import.meta.dir, "..");
 const isDryRun = process.argv.includes("--dry-run");
@@ -26,7 +27,7 @@ async function fetchAll(config: Config) {
   const allSubreddits = config.topics.flatMap((t) => t.subreddits);
   const allRssFeeds = config.topics.flatMap((t) => t.rss);
 
-  console.log(`Fetching from Hacker News, ${allSubreddits.length} subreddits, ${allRssFeeds.length} RSS feeds...`);
+  log(`Fetching from Hacker News, ${allSubreddits.length} subreddits, ${allRssFeeds.length} RSS feeds...`);
 
   const [hn, reddit, rss] = await Promise.all([
     fetchHackerNews(60),
@@ -34,9 +35,9 @@ async function fetchAll(config: Config) {
     fetchRssFeeds(allRssFeeds),
   ]);
 
-  console.log(`  HN: ${hn.length} articles`);
-  console.log(`  Reddit: ${reddit.length} articles`);
-  console.log(`  RSS: ${rss.length} articles`);
+  log(`  HN: ${hn.length} articles`);
+  log(`  Reddit: ${reddit.length} articles`);
+  log(`  RSS: ${rss.length} articles`);
 
   return [...hn, ...reddit, ...rss];
 }
@@ -44,34 +45,34 @@ async function fetchAll(config: Config) {
 async function main() {
   const config = loadConfig();
   const reportsDir = join(PROJECT_ROOT, config.report_output_dir);
-  console.log(`Loaded config: ${config.topics.length} topics, ${config.articles_per_category} articles/category`);
+  log(`Loaded config: ${config.topics.length} topics, ${config.articles_per_category} articles/category`);
 
   // Step 1: FTP — download yesterday's report (with any votes the user added)
   if (ftpEnabled && !isDryRun) {
-    console.log("\nFTP: Syncing yesterday's report and blacklist...");
+    log("FTP: Syncing yesterday's report and blacklist...");
     try {
       await downloadYesterday(reportsDir);
       await downloadBlacklist(join(PROJECT_ROOT, "config/blacklist.json"));
     } catch (err) {
-      console.warn("  [ftp] Download failed, continuing with local copy:", err);
+      warn("  [ftp] Download failed, continuing with local copy:", err);
     }
   }
 
   // Step 2: Parse feedback from yesterday's report
-  console.log("\nParsing feedback from yesterday's report...");
+  log("Parsing feedback from yesterday's report...");
   const { summary: feedbackSummary, weights } = parseFeedback(
     config.feedback_weight_file,
     config.report_output_dir
   );
-  console.log("Feedback:", feedbackSummary.split("\n")[0]);
+  log("Feedback:", feedbackSummary.split("\n")[0]);
 
   // Step 3: Fetch all articles in parallel
-  console.log("\nFetching articles...");
+  log("Fetching articles...");
   const articles = await fetchAll(config);
-  console.log(`Total: ${articles.length} articles fetched`);
+  log(`Total: ${articles.length} articles fetched`);
 
   // Step 4: Pre-filter to top candidates per topic
-  console.log("\nPre-filtering articles...");
+  log("Pre-filtering articles...");
   const seenUrlsFile = join(PROJECT_ROOT, "config/seen-urls.json");
   const seenUrls = loadSeenUrls(seenUrlsFile);
   
@@ -85,22 +86,22 @@ async function main() {
   }
 
   const { filtered, stats } = prefilter(articles, config.topics, weights, seenUrls, blacklistDomains, config.articles_per_category);
-  console.log(stats);
+  log(stats);
 
   if (isDryRun) {
-    console.log("\n=== DRY RUN — skipping Claude API call ===\n");
-    console.log("Top 10 pre-filtered articles:");
+    log("\n=== DRY RUN — skipping Claude API call ===\n");
+    log("Top 10 pre-filtered articles:");
     filtered.slice(0, 10).forEach((a, i) => {
-      console.log(`\n[${i}] ${a.title}`);
-      console.log(`    Source: ${a.source}`);
-      console.log(`    URL: ${a.url}`);
+      log(`\n[${i}] ${a.title}`);
+      log(`    Source: ${a.source}`);
+      log(`    URL: ${a.url}`);
     });
-    console.log(`\n...and ${filtered.length - 10} more.`);
+    log(`\n...and ${filtered.length - 10} more.`);
     return;
   }
 
   // Step 5: Curate with Claude
-  console.log("\nCalling Claude to curate articles...");
+  log("Calling Claude to curate articles...");
   const curationResult = await curateWithClaude(
     filtered,
     config.topics,
@@ -110,11 +111,11 @@ async function main() {
   );
 
   const totalArticles = curationResult.categories.reduce((sum, c) => sum + c.articles.length, 0);
-  console.log(`Curated: ${curationResult.categories.length} categories, ${totalArticles} articles + 1 wildcard`);
+  log(`Curated: ${curationResult.categories.length} categories, ${totalArticles} articles + 1 wildcard`);
 
   // Step 6: Render and write report
   const reportPath = renderReport(curationResult, config.report_output_dir);
-  console.log(`\nReport written to: ${reportPath}`);
+  log(`Report written to: ${reportPath}`);
 
   // Save today's shown URLs for future deduplication
   const shownUrls = [
@@ -125,11 +126,11 @@ async function main() {
 
   // Step 7: FTP — upload today's report to IONOS
   if (ftpEnabled) {
-    console.log("\nFTP: Uploading today's report...");
+    log("FTP: Uploading today's report...");
     try {
       await uploadToday(reportsDir);
     } catch (err) {
-      console.warn("  [ftp] Upload failed:", err);
+      warn("  [ftp] Upload failed:", err);
     }
   }
 }
