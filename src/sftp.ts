@@ -78,6 +78,49 @@ export async function downloadBlacklist(localPath: string): Promise<boolean> {
 }
 
 /**
+ * Downloads seen-urls.json from IONOS config dir.
+ * Overwrites the local copy so deduplication stays in sync across machines.
+ */
+export async function downloadSeenUrls(localPath: string): Promise<boolean> {
+  const remoteDir = process.env.FTP_REMOTE_REPORTS_DIR!;
+  const remoteFile = remoteDir.replace(/\/reports\/?$/, '') + '/seen-urls.json';
+
+  const client = await makeClient();
+  try {
+    const exists = await client.exists(remoteFile);
+    if (!exists) {
+      return false;
+    }
+    await client.fastGet(remoteFile, localPath);
+    log(`  [sftp] ↓ Downloaded seen-urls.json`);
+    return true;
+  } catch (err) {
+    warn(`  [sftp] Failed to download seen-urls.json:`, err);
+    return false;
+  } finally {
+    await client.end();
+  }
+}
+
+/**
+ * Uploads seen-urls.json to IONOS config dir.
+ */
+export async function uploadSeenUrls(localPath: string): Promise<void> {
+  const remoteDir = process.env.FTP_REMOTE_REPORTS_DIR!;
+  const remoteFile = remoteDir.replace(/\/reports\/?$/, '') + '/seen-urls.json';
+
+  const client = await makeClient();
+  try {
+    await client.fastPut(localPath, remoteFile);
+    log(`  [sftp] ↑ Uploaded seen-urls.json`);
+  } catch (err) {
+    warn(`  [sftp] Failed to upload seen-urls.json:`, err);
+  } finally {
+    await client.end();
+  }
+}
+
+/**
  * Uploads today's generated report to IONOS reports/.
  */
 export async function uploadToday(localReportsDir: string): Promise<void> {

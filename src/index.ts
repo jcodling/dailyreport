@@ -11,7 +11,7 @@ import { prefilter } from "./prefilter";
 import { loadSeenUrls, saveSeenUrls, todayStr } from "./seen";
 import { curateWithClaude } from "./curator";
 import { renderReport } from "./report";
-import { downloadYesterday, uploadToday, downloadBlacklist } from "./sftp";
+import { downloadYesterday, uploadToday, downloadBlacklist, downloadSeenUrls, uploadSeenUrls } from "./sftp";
 import { log, warn } from "./log";
 
 const PROJECT_ROOT = join(import.meta.dir, "..");
@@ -24,7 +24,7 @@ function loadConfig(): Config {
   return yaml.load(raw) as Config;
 }
 
-function gitCommitIfChanged(relPath: string, message: string): void {
+function gitCommitIfChanged(relPath: string, message: string, push = false): void {
   try {
     execSync(`git diff --quiet -- "${relPath}"`, { cwd: PROJECT_ROOT });
     // exit 0 means no changes
@@ -34,6 +34,10 @@ function gitCommitIfChanged(relPath: string, message: string): void {
       execSync(`git add "${relPath}"`, { cwd: PROJECT_ROOT });
       execSync(`git commit -m "${message}"`, { cwd: PROJECT_ROOT });
       log(`  [git] Committed ${relPath}`);
+      if (push) {
+        execSync(`git push`, { cwd: PROJECT_ROOT });
+        log(`  [git] Pushed`);
+      }
     } catch (err) {
       warn(`  [git] Failed to commit ${relPath}:`, err);
     }
@@ -75,6 +79,7 @@ async function main() {
       await downloadYesterday(reportsDir);
       await downloadBlacklist(join(PROJECT_ROOT, "config/blacklist.json"));
       gitCommitIfChanged("config/blacklist.json", "chore: update blacklist from remote");
+      await downloadSeenUrls(join(PROJECT_ROOT, "config/seen-urls.json"));
     } catch (err) {
       warn("  [ftp] Download failed, continuing with local copy:", err);
     }
@@ -146,12 +151,14 @@ async function main() {
     curationResult.wildcard.url,
   ];
   saveSeenUrls(seenUrlsFile, todayStr(), shownUrls);
+  gitCommitIfChanged("config/seen-urls.json", "chore: update seen-urls", true);
 
   // Step 7: FTP — upload today's report to IONOS
   if (ftpEnabled) {
     log("FTP: Uploading today's report...");
     try {
       await uploadToday(reportsDir);
+      await uploadSeenUrls(join(PROJECT_ROOT, "config/seen-urls.json"));
     } catch (err) {
       warn("  [ftp] Upload failed:", err);
     }

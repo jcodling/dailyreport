@@ -6,4 +6,3 @@ node_modules/
 dist/
 .vscode/
 .claude/
-config/seen-urls.json
