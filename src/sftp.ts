@@ -103,24 +103,6 @@ export async function downloadSeenUrls(localPath: string): Promise<boolean> {
 }
 
 /**
- * Uploads seen-urls.json to IONOS config dir.
- */
-export async function uploadSeenUrls(localPath: string): Promise<void> {
-  const remoteDir = process.env.FTP_REMOTE_REPORTS_DIR!;
-  const remoteFile = remoteDir.replace(/\/reports\/?$/, '') + '/seen-urls.json';
-
-  const client = await makeClient();
-  try {
-    await client.fastPut(localPath, remoteFile);
-    log(`  [sftp] ↑ Uploaded seen-urls.json`);
-  } catch (err) {
-    warn(`  [sftp] Failed to upload seen-urls.json:`, err);
-  } finally {
-    await client.end();
-  }
-}
-
-/**
  * Uploads today's generated report to IONOS reports/.
  */
 export async function uploadToday(localReportsDir: string): Promise<void> {

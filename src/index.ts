@@ -11,7 +11,7 @@ import { prefilter } from "./prefilter";
 import { loadSeenUrls, saveSeenUrls, todayStr } from "./seen";
 import { curateWithClaude } from "./curator";
 import { renderReport } from "./report";
-import { downloadYesterday, uploadToday, downloadBlacklist, downloadSeenUrls, uploadSeenUrls } from "./sftp";
+import { downloadYesterday, uploadToday, downloadBlacklist, downloadSeenUrls } from "./sftp";
 import { log, warn } from "./log";
 
 const PROJECT_ROOT = join(import.meta.dir, "..");
@@ -158,7 +158,6 @@ async function main() {
     log("FTP: Uploading today's report...");
     try {
       await uploadToday(reportsDir);
-      await uploadSeenUrls(join(PROJECT_ROOT, "config/seen-urls.json"));
     } catch (err) {
       warn("  [ftp] Upload failed:", err);
     }
