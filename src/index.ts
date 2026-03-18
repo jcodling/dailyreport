@@ -1,5 +1,6 @@
 import { readFileSync } from "fs";
 import { join } from "path";
+import { execSync } from "child_process";
 import yaml from "js-yaml";
 import type { Config } from "./types";
 import { fetchHackerNews } from "./fetchers/hackernews";
@@ -21,6 +22,22 @@ function loadConfig(): Config {
   const configPath = join(PROJECT_ROOT, "config/interests.yaml");
   const raw = readFileSync(configPath, "utf-8");
   return yaml.load(raw) as Config;
+}
+
+function gitCommitIfChanged(relPath: string, message: string): void {
+  try {
+    execSync(`git diff --quiet -- "${relPath}"`, { cwd: PROJECT_ROOT });
+    // exit 0 means no changes
+  } catch {
+    // exit non-zero means file changed — stage and commit
+    try {
+      execSync(`git add "${relPath}"`, { cwd: PROJECT_ROOT });
+      execSync(`git commit -m "${message}"`, { cwd: PROJECT_ROOT });
+      log(`  [git] Committed ${relPath}`);
+    } catch (err) {
+      warn(`  [git] Failed to commit ${relPath}:`, err);
+    }
+  }
 }
 
 async function fetchAll(config: Config) {
@@ -57,6 +74,7 @@ async function main() {
     try {
       await downloadYesterday(reportsDir);
       await downloadBlacklist(join(PROJECT_ROOT, "config/blacklist.json"));
+      gitCommitIfChanged("config/blacklist.json", "chore: update blacklist from remote");
     } catch (err) {
       warn("  [ftp] Download failed, continuing with local copy:", err);
     }
@@ -69,6 +87,7 @@ async function main() {
     config.report_output_dir
   );
   log("Feedback:", feedbackSummary.split("\n")[0]);
+  gitCommitIfChanged(config.feedback_weight_file, "chore: update feedback weights from daily votes");
 
   // Step 3: Fetch all articles in parallel
   log("Fetching articles...");
