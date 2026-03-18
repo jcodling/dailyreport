@@ -11,7 +11,7 @@ import { prefilter } from "./prefilter";
 import { loadSeenUrls, saveSeenUrls, todayStr } from "./seen";
 import { curateWithClaude } from "./curator";
 import { renderReport } from "./report";
-import { downloadYesterday, uploadToday, downloadBlacklist, downloadSeenUrls } from "./sftp";
+import { downloadYesterday, uploadToday, downloadBlacklist } from "./sftp";
 import { log, warn } from "./log";
 
 const PROJECT_ROOT = join(import.meta.dir, "..");
@@ -79,7 +79,6 @@ async function main() {
       await downloadYesterday(reportsDir);
       await downloadBlacklist(join(PROJECT_ROOT, "config/blacklist.json"));
       gitCommitIfChanged("config/blacklist.json", "chore: update blacklist from remote");
-      await downloadSeenUrls(join(PROJECT_ROOT, "config/seen-urls.json"));
     } catch (err) {
       warn("  [ftp] Download failed, continuing with local copy:", err);
     }
