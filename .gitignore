@@ -7,4 +7,3 @@ dist/
 .vscode/
 .claude/
 config/seen-urls.json
-config/feedback-weights.json
