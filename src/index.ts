@@ -35,7 +35,7 @@ function gitCommitIfChanged(relPath: string, message: string, push = false): voi
       execSync(`git commit -m "${message}"`, { cwd: PROJECT_ROOT });
       log(`  [git] Committed ${relPath}`);
       if (push) {
-        execSync(`git push`, { cwd: PROJECT_ROOT });
+        execSync(`git push`, { cwd: PROJECT_ROOT, stdio: 'pipe' });
         log(`  [git] Pushed`);
       }
     } catch (err) {
