@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install macOS launchd plist for daily 5am report generation
+# Install macOS launchd plist for daily 3am report generation
 # Run this ONLY after verifying end-to-end output quality.
 
 set -euo pipefail
@@ -30,7 +30,7 @@ cat > "$PLIST_PATH" <<EOF
     <key>StartCalendarInterval</key>
     <dict>
         <key>Hour</key>
-        <integer>5</integer>
+        <integer>3</integer>
         <key>Minute</key>
         <integer>0</integer>
     </dict>
@@ -48,7 +48,7 @@ launchctl unload "$PLIST_PATH" 2>/dev/null || true
 launchctl load "$PLIST_PATH"
 
 echo "Installed launchd job: ${PLIST_LABEL}"
-echo "Will run daily at 5:00 AM"
+echo "Will run daily at 3:00 AM"
 echo "Logs: ${LOG_DIR}/dailyreport.log"
 echo ""
 echo "To uninstall: launchctl unload ${PLIST_PATH} && rm ${PLIST_PATH}"
