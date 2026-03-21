@@ -14,5 +14,9 @@ fi
 export PATH="$HOME/.bun/bin:/usr/local/bin:/usr/bin:/bin"
 
 echo "[$(date)] Starting daily report" >> "$PROJECT_DIR/logs/dailyreport.log"
-"$HOME/.bun/bin/bun" run "$PROJECT_DIR/src/index.ts"
+caffeinate -i "$HOME/.bun/bin/bun" run "$PROJECT_DIR/src/index.ts"
 echo "[$(date)] Done" >> "$PROJECT_DIR/logs/dailyreport.log"
+
+# Schedule wake for 5 min before tomorrow's 3am run
+NEXT_WAKE=$(date -v+1d "+%m/%d/%y 02:55:00")
+sudo pmset schedule wake "$NEXT_WAKE" 2>/dev/null || true
