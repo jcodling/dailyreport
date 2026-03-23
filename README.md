@@ -12,7 +12,7 @@ An automated daily content curation system that aggregates articles from Hacker 
 4. **Learn** — Reads +1/−1 votes from yesterday's report and updates keyword weights for next time
 5. **Publish** — Renders a Markdown report, uploads it to the hosted web UI via SFTP
 
-Runs automatically at 5 AM daily via macOS launchd.
+Runs automatically at 3 AM daily via macOS launchd.
 
 ---
 
@@ -72,8 +72,9 @@ Runs automatically at 5 AM daily via macOS launchd.
 │   └── .htaccess         # IONOS routing config
 │
 ├── scripts/
-│   ├── install-launchd.sh  # Install macOS launchd 5 AM job
-│   └── run.sh              # Wrapper: loads .env, sets PATH, runs pipeline
+│   ├── install-launchd.sh  # Install macOS launchd 3 AM job + persistent wake schedule
+│   ├── run.sh              # Wrapper: loads .env, sets PATH, runs pipeline
+│   └── monitor.sh          # Colourised live log viewer
 │
 ├── reports/              # Generated Markdown reports (YYYY-MM-DD.md)
 └── logs/                 # Execution logs (dailyreport.log, dailyreport.err)
@@ -160,9 +161,21 @@ Starts a dev server at http://localhost:3001 with the report viewer (no OAuth re
 bash scripts/install-launchd.sh
 ```
 
-Installs a launchd job that runs the pipeline at **5:00 AM every day**. Logs go to `logs/`.
+Installs a launchd job that runs the pipeline at **3:00 AM every day**, and sets a persistent daily wake at **2:55 AM** via `pmset repeat` so the machine is awake in time. The wake schedule survives reboots and macOS updates.
 
-**View logs:**
+> **Note:** `install-launchd.sh` requires sudo to set the wake schedule. If it can't prompt for a password (e.g. first run), set it manually: `sudo pmset repeat wake MTWRFSU 02:55:00`
+
+**View logs (colourised):**
+```bash
+bash scripts/monitor.sh
+```
+
+**View full log history:**
+```bash
+bash scripts/monitor.sh --all
+```
+
+**Raw logs:**
 ```bash
 tail -f logs/dailyreport.log
 ```
