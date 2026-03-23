@@ -47,8 +47,12 @@ EOF
 launchctl unload "$PLIST_PATH" 2>/dev/null || true
 launchctl load "$PLIST_PATH"
 
+# Set persistent recurring wake at 2:55am so machine is awake for the 3am job
+sudo pmset repeat wake MTWRFSU 02:55:00 2>/dev/null || true
+
 echo "Installed launchd job: ${PLIST_LABEL}"
 echo "Will run daily at 3:00 AM"
+echo "Scheduled persistent daily wake at 2:55 AM (survives reboots)"
 echo "Logs: ${LOG_DIR}/dailyreport.log"
 echo ""
 echo "To uninstall: launchctl unload ${PLIST_PATH} && rm ${PLIST_PATH}"

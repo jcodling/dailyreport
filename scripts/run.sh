@@ -17,6 +17,5 @@ echo "[$(date)] Starting daily report" >> "$PROJECT_DIR/logs/dailyreport.log"
 caffeinate -i "$HOME/.bun/bin/bun" run "$PROJECT_DIR/src/index.ts"
 echo "[$(date)] Done" >> "$PROJECT_DIR/logs/dailyreport.log"
 
-# Schedule wake for 5 min before tomorrow's 3am run
-NEXT_WAKE=$(date -v+1d "+%m/%d/%y 02:55:00")
-sudo pmset schedule wake "$NEXT_WAKE" 2>/dev/null || true
+# Set persistent recurring wake at 2:55am (survives reboots/updates)
+sudo pmset repeat wake MTWRFSU 02:55:00 2>/dev/null || true
