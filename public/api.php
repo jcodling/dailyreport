@@ -21,6 +21,15 @@ if (empty($_SESSION['user_email']) || $_SESSION['user_email'] !== ALLOWED_EMAIL)
     exit;
 }
 
+// Append an access entry to access.log (downloaded and reset during daily sync)
+$_access_entry = json_encode([
+    't'      => gmdate('Y-m-d\TH:i:s\Z'),
+    'method' => $_SERVER['REQUEST_METHOD'],
+    'path'   => parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/',
+    'ip'     => $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? '',
+]) . "\n";
+file_put_contents(__DIR__ . '/access.log', $_access_entry, FILE_APPEND | LOCK_EX);
+
 // Reports live in public/reports/ — inside the web root but protected by .htaccess
 define('REPORTS_DIR', realpath(__DIR__ . '/reports'));
 define('SETTINGS_FILE', __DIR__ . '/settings.json');

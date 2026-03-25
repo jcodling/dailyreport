@@ -11,7 +11,7 @@ import { prefilter } from "./prefilter";
 import { loadSeenUrls, saveSeenUrls, todayStr } from "./seen";
 import { curateWithClaude } from "./curator";
 import { renderReport } from "./report";
-import { downloadYesterday, uploadToday, downloadBlacklist } from "./sftp";
+import { downloadYesterday, uploadToday, downloadBlacklist, downloadAccessLog } from "./sftp";
 import { log, warn } from "./log";
 
 const PROJECT_ROOT = join(import.meta.dir, "..");
@@ -81,6 +81,23 @@ async function main() {
       gitCommitIfChanged("config/blacklist.json", "chore: update blacklist from remote");
     } catch (err) {
       warn("  [ftp] Download failed, continuing with local copy:", err);
+    }
+
+    // Download and summarise site access since last sync
+    try {
+      const accessLogPath = join(PROJECT_ROOT, "logs/access.log");
+      const raw = await downloadAccessLog(accessLogPath);
+      if (raw) {
+        const entries = raw.trim().split("\n").map(l => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+        log(`Site access since last sync: ${entries.length} request(s)`);
+        for (const e of entries) {
+          log(`  ${e.t}  ${e.method.padEnd(6)} ${e.path}  [${e.ip}]`);
+        }
+      } else {
+        log("Site access since last sync: none");
+      }
+    } catch (err) {
+      warn("  [ftp] Failed to fetch access log:", err);
     }
   }
 

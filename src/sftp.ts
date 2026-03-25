@@ -78,6 +78,32 @@ export async function downloadBlacklist(localPath: string): Promise<boolean> {
 }
 
 /**
+ * Downloads access.log from IONOS, saves it locally, then deletes the remote copy.
+ * Returns the raw log content, or null if no log exists yet.
+ */
+export async function downloadAccessLog(localPath: string): Promise<string | null> {
+  const remoteDir = process.env.FTP_REMOTE_REPORTS_DIR!;
+  const remoteFile = remoteDir.replace(/\/reports\/?$/, '') + '/access.log';
+
+  const client = await makeClient();
+  try {
+    const exists = await client.exists(remoteFile);
+    if (!exists) {
+      return null;
+    }
+    await client.fastGet(remoteFile, localPath);
+    await client.delete(remoteFile);
+    log(`  [sftp] ↓ Downloaded access.log (reset on server)`);
+    return require("fs").readFileSync(localPath, "utf-8");
+  } catch (err) {
+    warn(`  [sftp] Failed to download access.log:`, err);
+    return null;
+  } finally {
+    await client.end();
+  }
+}
+
+/**
  * Uploads today's generated report to IONOS reports/.
  */
 export async function uploadToday(localReportsDir: string): Promise<void> {
