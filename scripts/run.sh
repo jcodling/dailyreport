@@ -17,5 +17,7 @@ echo "[$(date)] Starting daily report" >> "$PROJECT_DIR/logs/dailyreport.log"
 caffeinate -i "$HOME/.bun/bin/bun" run "$PROJECT_DIR/src/index.ts"
 echo "[$(date)] Done" >> "$PROJECT_DIR/logs/dailyreport.log"
 
-# Set persistent recurring wake at 2:55am (survives reboots/updates)
-sudo pmset repeat wake MTWRFSU 02:55:00 2>/dev/null || echo "[$(date)] WARNING: pmset repeat wake failed — run manually: sudo pmset repeat wake MTWRFSU 02:55:00" >> "$PROJECT_DIR/logs/dailyreport.log"
+# Ensure recurring wake at 2:55am — skip sudo if already scheduled (launchd has no TTY)
+if ! pmset -g sched 2>/dev/null | grep -q "2:55"; then
+  sudo pmset repeat wake MTWRFSU 02:55:00 2>/dev/null || echo "[$(date)] WARNING: pmset repeat wake failed — run manually: sudo pmset repeat wake MTWRFSU 02:55:00" >> "$PROJECT_DIR/logs/dailyreport.log"
+fi
