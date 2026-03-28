@@ -542,5 +542,6 @@
   "wildfires": -0.1,
   "severe": -0.1,
   "currently": -0.1,
-  "expected": -0.1
+  "expected": -0.1,
+  "freecad": -0.1
 }
