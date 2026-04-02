@@ -600,7 +600,7 @@
   "learn": 0.1,
   "doing": 0.1,
   "reading": 0.1,
-  "inside": -0.1,
+  "inside": -0.2,
   "microsoft": -0.2,
   "fighting": -0.1,
   "drop": -0.1,
@@ -614,5 +614,13 @@
   "explosion": 0.1,
   "defies": 0.1,
   "known": 0.1,
-  "physics": 0.1
+  "physics": 0.1,
+  "leaked": -0.1,
+  "calls": -0.1,
+  "expose": -0.1,
+  "hungary": -0.1,
+  "slovakia": -0.1,
+  "secret": -0.1,
+  "kremlin": -0.1,
+  "backchannel": -0.1
 }
