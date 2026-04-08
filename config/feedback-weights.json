@@ -87,7 +87,7 @@
   "building": 0.1,
   "analytics": -0.1,
   "server": 0,
-  "rules": -0.1,
+  "rules": -0.2,
   "classification": -0.1,
   "vector": -0.1,
   "search": 0,
@@ -683,5 +683,13 @@
   "images": -0.1,
   "esp32": -0.1,
   "zero": -0.1,
-  "multiplications": -0.1
+  "multiplications": -0.1,
+  "jersey": -0.1,
+  "cannot": -0.1,
+  "regulate": -0.1,
+  "kalshi": -0.1,
+  "prediction": -0.1,
+  "market": -0.1,
+  "appeals": -0.1,
+  "court": -0.1
 }
