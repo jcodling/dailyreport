@@ -9,7 +9,7 @@ An automated daily content curation system that aggregates articles from Hacker 
 1. **Fetch** — Pulls articles from Hacker News, configured subreddits, and RSS feeds in parallel
 2. **Deduplicate** — Filters out URLs seen in the past 30 days and scores articles by topic relevance
 3. **Curate** — Sends a compact prompt to Claude, which selects 5 articles per category + 1 wildcard pick
-4. **Learn** — Reads +1/−1 votes from yesterday's report and updates keyword weights for next time
+4. **Learn** — Reads feedback markers from yesterday's report and updates keyword weights for next time
 5. **Publish** — Renders a Markdown report, uploads it to the hosted web UI via SFTP
 
 Runs automatically at 3 AM daily via macOS launchd.
@@ -33,7 +33,7 @@ Runs automatically at 3 AM daily via macOS launchd.
 |---|---|
 | Runtime | [Bun](https://bun.sh) |
 | Language | TypeScript (strict) |
-| AI | Anthropic Claude (via `@anthropic-ai/sdk`) |
+| AI | Claude Code CLI tool |
 | Feed parsing | `fast-xml-parser` |
 | Remote sync | `ssh2-sftp-client` (IONOS SFTP) |
 | Web UI | PHP + Vanilla JS (hosted on IONOS) |
@@ -42,13 +42,26 @@ Runs automatically at 3 AM daily via macOS launchd.
 
 ---
 
+## Requirements
+
+- **Bun** runtime (for TypeScript execution)
+- **Claude Code CLI** tool (for article curation)
+  - Install Claude Code from [Anthropic](https://docs.anthropic.com/claude/docs/claude-code)
+  - Ensure `claude` command is available in PATH
+  - Set `CLAUDE_BIN` and `CLAUDE_MODEL` in your `.env` file (e.g., `CLAUDE_BIN=claude`, `CLAUDE_MODEL=claude-sonnet-4-6`)
+- **IONOS SFTP** account (for hosting and report sync)
+- **Google OAuth** credentials (for web UI authentication)
+- **macOS** (for launchd automation)
+
+---
+
 ## Project structure
 
 ```
 ├── src/
 │   ├── index.ts          # Pipeline orchestrator
-│   ├── curator.ts        # Claude API integration (compact ID-based prompting)
-│   ├── feedback.ts       # Parse votes from yesterday's report, update weights
+│   ├── curator.ts        # Claude Code CLI integration (compact ID-based prompting)
+│   ├── feedback.ts       # Parse feedback markers from yesterday's report, update weights
 │   ├── prefilter.ts      # Topic scoring, deduplication, candidate selection
 │   ├── report.ts         # Markdown report renderer
 │   ├── seen.ts           # 30-day rolling URL deduplication store
@@ -90,15 +103,23 @@ Runs automatically at 3 AM daily via macOS launchd.
 curl -fsSL https://bun.sh/install | bash
 ```
 
-### 2. Install dependencies
+### 2. Install Claude Code CLI
+
+Follow the installation instructions from [Anthropic Claude Code docs](https://docs.anthropic.com/claude/docs/claude-code).
+
+### 3. Install dependencies
 
 ```bash
 bun install
 ```
 
-### 3. Create `.env`
+### 4. Create `.env`
 
 ```bash
+# Claude Code CLI
+CLAUDE_BIN=claude
+CLAUDE_MODEL=claude-sonnet-4-6
+
 # IONOS SFTP
 FTP_HOST=your-sftp-host
 FTP_USER=your-username
@@ -192,7 +213,7 @@ rm ~/Library/LaunchAgents/com.dailyreport.generate.plist
 
 Vote on articles in the web UI with 👍 / 👎. The next morning, the pipeline:
 
-1. Downloads yesterday's report (which now contains your votes as `+1` / `-1` markers)
+1. Downloads yesterday's report (which now contains your votes as `<!-- vote:+1 -->` or `<!-- vote:-1 -->` markers)
 2. Extracts keywords from voted article titles
 3. Nudges `config/feedback-weights.json` by ±0.1 per keyword, clamped to `[-1.0, 1.0]`
 4. Applies those weights to scoring during the next pre-filter pass
