@@ -1,8 +1,10 @@
 // src/deploy.ts — run once after any web UI change
 import { makeClient } from "./sftp";
-import { join } from "path";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 
-const PUBLIC_DIR = join(import.meta.dir, "..", "public");
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PUBLIC_DIR = join(__dirname, "..", "public");
 
 async function deploy() {
   const targetDir = process.env.TARGET_DIR;

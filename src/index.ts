@@ -1,5 +1,6 @@
 import { readFileSync } from "fs";
-import { join } from "path";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 import { execSync } from "child_process";
 import yaml from "js-yaml";
 import type { Config } from "./types";
@@ -14,7 +15,8 @@ import { renderReport } from "./report";
 import { downloadYesterday, uploadToday, downloadBlacklist, downloadAccessLog } from "./sftp";
 import { log, warn } from "./log";
 
-const PROJECT_ROOT = join(import.meta.dir, "..");
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PROJECT_ROOT = join(__dirname, "..");
 const isDryRun = process.argv.includes("--dry-run");
 const ftpEnabled = !!process.env.FTP_HOST;
 
