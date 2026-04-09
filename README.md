@@ -37,7 +37,7 @@ Runs automatically at 3 AM daily via macOS launchd.
 | Feed parsing | `fast-xml-parser` |
 | Remote sync | `ssh2-sftp-client` (IONOS SFTP) |
 | Web UI | PHP + Vanilla JS (hosted on IONOS) |
-| Auth | Google OAuth 2.0 |
+| Auth | Google OAuth 2.0 (ensures only allowed email address can access reports) |
 | Scheduler | macOS launchd |
 
 ---
@@ -50,7 +50,7 @@ Runs automatically at 3 AM daily via macOS launchd.
   - Ensure `claude` command is available in PATH
   - Set `CLAUDE_BIN` and `CLAUDE_MODEL` in your `.env` file (e.g., `CLAUDE_BIN=claude`, `CLAUDE_MODEL=claude-sonnet-4-6`)
 - **IONOS SFTP** account (for hosting and report sync)
-- **Google OAuth** credentials (for web UI authentication)
+- **Google OAuth** credentials (for web UI authentication - only allows access from configured email address)
 - **macOS** (for launchd automation)
 
 ---
