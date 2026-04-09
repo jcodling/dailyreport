@@ -48,7 +48,7 @@ Runs automatically at 3 AM daily via macOS launchd.
 - **Claude Code CLI** tool (for article curation)
   - Install Claude Code from [Anthropic](https://docs.anthropic.com/claude/docs/claude-code)
   - Ensure `claude` command is available in PATH
-  - Set `CLAUDE_BIN` and `CLAUDE_MODEL` in your `.env` file (e.g., `CLAUDE_BIN=claude`, `CLAUDE_MODEL=claude-sonnet-4-6`)
+  - Set `CLAUDE_BIN` and `CLAUDE_MODEL` in your `.env` file (e.g., `CLAUDE_BIN=claude`, `CLAUDE_MODEL=haiku`)
 - **IONOS SFTP** account (for hosting and report sync)
 - **Google OAuth** credentials (for web UI authentication - only allows access from configured email address)
 - **macOS** (for launchd automation)
@@ -118,7 +118,7 @@ bun install
 ```bash
 # Claude Code CLI
 CLAUDE_BIN=claude
-CLAUDE_MODEL=claude-sonnet-4-6
+CLAUDE_MODEL=haiku
 
 # IONOS SFTP
 FTP_HOST=your-sftp-host
