@@ -1,7 +1,9 @@
 import { readFileSync, writeFileSync, readdirSync, existsSync, unlinkSync } from "fs";
-import { join } from "path";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 
-const PROJECT_ROOT = join(import.meta.dir, "..");
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PROJECT_ROOT = join(__dirname, "..");
 const REPORTS_DIR  = join(PROJECT_ROOT, "reports");
 const PUBLIC_DIR   = join(PROJECT_ROOT, "public");
 const PORT = 3001;

@@ -1,5 +1,6 @@
 import { writeFileSync, mkdirSync } from "fs";
-import { join } from "path";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 import type { CurationResult } from "./types";
 
 function todayStr(): string {
@@ -41,7 +42,8 @@ export function renderReport(result: CurationResult, outputDir: string): string 
   );
 
   const content = lines.join("\n");
-  const projectRoot = join(import.meta.dir, "..");
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  const projectRoot = join(__dirname, "..");
   const dir = join(projectRoot, outputDir);
   mkdirSync(dir, { recursive: true });
   const filePath = join(dir, `${date}.md`);
