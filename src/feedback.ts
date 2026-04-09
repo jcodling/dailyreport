@@ -22,6 +22,8 @@ function extractKeywords(title: string): string[] {
 
 function extractFeedbackVote(line: string): 1 | -1 | 0 {
   const trimmed = line.trimEnd();
+  const markerMatch = trimmed.match(/<!--\s*vote:(\+1|-1)\s*-->$/);
+  if (markerMatch) return markerMatch[1] === "+1" ? 1 : -1;
   if (trimmed.endsWith(" +1")) return 1;
   if (trimmed.endsWith(" -1")) return -1;
   return 0;

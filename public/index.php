@@ -792,13 +792,16 @@ function toast(msg) {
 
 // ── Markdown parser ────────────────────────────────────────────────
 function extractVote(line) {
-  if (line.endsWith(' +1')) return 1;
-  if (line.endsWith(' -1')) return -1;
+  const trimmed = line.trimEnd();
+  const match = trimmed.match(/<!--\s*vote:(\+1|-1)\s*-->$/);
+  if (match) return match[1] === '+1' ? 1 : -1;
+  if (trimmed.endsWith(' +1')) return 1;
+  if (trimmed.endsWith(' -1')) return -1;
   return 0;
 }
 
 function stripVote(line) {
-  return line.replace(/ [+-]1$/, '');
+  return line.replace(/\s*<!--\s*vote:(?:\+1|-1)\s*-->$/, '').replace(/ [+-]1$/, '');
 }
 
 function parseMarkdown(date, text) {

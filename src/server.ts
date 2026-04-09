@@ -19,6 +19,14 @@ function getAvailableDates(): string[] {
     .reverse();
 }
 
+function normalizeFeedbackLine(line: string): string {
+  return line.replace(/\s*<!--\s*vote:(?:\+1|-1)\s*-->$/, "").replace(/ [+-]1$/, "");
+}
+
+function formatFeedbackMarker(vote: 1 | -1): string {
+  return vote === 1 ? " <!-- vote:+1 -->" : " <!-- vote:-1 -->";
+}
+
 function applyVote(date: string, lineIndex: number, vote: 1 | -1 | 0): void {
   const filePath = join(REPORTS_DIR, `${date}.md`);
   if (!existsSync(filePath)) throw new Error("Report not found");
@@ -26,9 +34,9 @@ function applyVote(date: string, lineIndex: number, vote: 1 | -1 | 0): void {
   const lines = readFileSync(filePath, "utf-8").split("\n");
   if (lineIndex < 0 || lineIndex >= lines.length) throw new RangeError("lineIndex out of bounds");
 
-  let line = lines[lineIndex].replace(/ [+-]1$/, "");
-  if (vote === 1)  line += " +1";
-  if (vote === -1) line += " -1";
+  let line = normalizeFeedbackLine(lines[lineIndex]);
+  if (vote === 1) line += formatFeedbackMarker(1);
+  if (vote === -1) line += formatFeedbackMarker(-1);
 
   lines[lineIndex] = line;
   writeFileSync(filePath, lines.join("\n"), "utf-8");
