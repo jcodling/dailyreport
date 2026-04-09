@@ -1,7 +1,7 @@
 import type { Article, CurationResult, CuratedArticle, FeedbackWeights, Topic } from "./types";
 
-const CLAUDE_BIN = "/Users/jeffcodling/.local/bin/claude";
-const CLAUDE_MODEL = "claude-haiku-4-5-20251001";
+const CLAUDE_BIN = process.env.CLAUDE_BIN!;
+const CLAUDE_MODEL = process.env.CLAUDE_MODEL!;
 const SNIPPET_LEN = 120;
 
 // Compact pipe-delimited article list — much cheaper than JSON
