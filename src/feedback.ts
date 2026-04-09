@@ -18,6 +18,13 @@ function extractKeywords(title: string): string[] {
     .filter((w) => w.length > 3);
 }
 
+function extractFeedbackVote(line: string): 1 | -1 | 0 {
+  const trimmed = line.trimEnd();
+  if (trimmed.endsWith(" +1")) return 1;
+  if (trimmed.endsWith(" -1")) return -1;
+  return 0;
+}
+
 export function parseFeedback(
   weightsFile: string,
   reportsDir: string
@@ -45,9 +52,8 @@ export function parseFeedback(
   const negatives: string[] = [];
 
   for (const line of lines) {
-    const hasPos = /\+1/.test(line);
-    const hasNeg = /-1/.test(line);
-    if (!hasPos && !hasNeg) continue;
+    const vote = extractFeedbackVote(line);
+    if (vote === 0) continue;
 
     // Extract title from markdown link: [Title](url)
     const titleMatch = line.match(/\[([^\]]+)\]/);
@@ -56,14 +62,14 @@ export function parseFeedback(
     const title = titleMatch[1];
     const keywords = extractKeywords(title);
 
-    if (hasPos) {
+    if (vote === 1) {
       positives.push(title);
       for (const kw of keywords) {
         weights[kw] = Math.min(1.0, (weights[kw] ?? 0) + 0.1);
       }
     }
 
-    if (hasNeg) {
+    if (vote === -1) {
       negatives.push(title);
       for (const kw of keywords) {
         weights[kw] = Math.max(-1.0, (weights[kw] ?? 0) - 0.1);
