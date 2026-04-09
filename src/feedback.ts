@@ -1,8 +1,10 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
-import { join } from "path";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 import type { FeedbackWeights } from "./types";
 
-const PROJECT_ROOT = join(import.meta.dir, "..");
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PROJECT_ROOT = join(__dirname, "..");
 
 function yesterdayStr(): string {
   const d = new Date();
