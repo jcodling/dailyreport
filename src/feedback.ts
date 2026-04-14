@@ -81,8 +81,10 @@ export function parseFeedback(
     }
   }
 
-  // Persist updated weights
-  writeFileSync(weightsPath, JSON.stringify(weights, null, 2));
+  // Persist updated weights only if feedback was found
+  if (positives.length > 0 || negatives.length > 0) {
+    writeFileSync(weightsPath, JSON.stringify(weights, null, 2));
+  }
 
   const lines_summary: string[] = [];
   if (positives.length > 0) {
