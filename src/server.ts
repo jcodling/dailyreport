@@ -175,7 +175,7 @@ const server = Bun.serve({
     }
 
     // Cron trigger endpoint
-    const cronMatch = path === "admin/cron/generate";
+    const cronMatch = path === "/admin/cron/generate";
     if (req.method === "POST" && cronMatch) {
       const apiKey = req.headers.get("X-API-Key");
       if (!apiKey || apiKey !== getApiKey()) {
