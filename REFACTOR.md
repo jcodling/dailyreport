@@ -120,23 +120,124 @@ Or using `SERVER_URL` for remote triggering:
 - Consistent environment with local testing
 - Can add more logic to the script later
 
-### Option C: Docker container
+### Option C: Synology NAS (DSM)
 
-Run cron inside a Docker container that triggers your server.
+Excellent choice — always-on, low power, GUI-based task scheduler.
 
-```yaml
-# docker-compose.yml
-services:
-  dailyreport-cron:
-    image: alpine:latest
-    command: >
-      sh -c "
-        echo '0 3 * * * curl -s -X POST http://server:3001/admin/cron/generate -H \"X-API-Key: secret\"' | crontab - &&
-        crontab - &&
-        while true; do sleep 86400; done
-      "
-    restart: unless-stopped
+#### Method 1: DSM Task Scheduler (Recommended, No CLI Required)
+
+1. **Open Task Scheduler** from the Synology main menu
+2. Click **Create** → **Scheduled Task** → **User-defined script**
+3. Configure:
+
+| Field | Value |
+|-------|-------|
+| **Task** | `dailyreport-trigger` |
+| **User** | `root` or your admin user |
+| **Enabled** | Check this box |
+| **Event** | `Run on the following schedule` → `Custom` |
+| **Frequency** | `Daily` at `03:00` |
+| **Task type** | `Shell script` |
+
+4. Enter the script:
+
+```bash
+#!/bin/sh
+curl -s -X POST https://things.jcodling.ca/projects/dailyreport/admin/cron/generate \
+  -H "X-API-Key: your-secret-api-key"
 ```
+
+5. Click **OK**
+
+**Pros:**
+- GUI-based — no SSH or scripting knowledge required
+- Built-in log viewer in Task Scheduler
+- Email notifications on success/failure
+- Can configure retry on failure
+
+#### Method 2: SSH with Bun Helper Script
+
+If you prefer using the `scripts/cron-trigger.ts` helper:
+
+1. **Enable SSH** on Synology:
+   - Control Panel → Terminal & SNMP → Enable SSH service
+
+2. **SSH into your NAS**:
+   ```bash
+   ssh admin@your-nas-ip
+   ```
+
+3. **Install Bun**:
+   ```bash
+   curl -fsSL https://bun.sh/install | bash
+   export BUN_INSTALL="$HOME/bun"
+   echo 'export PATH="$HOME/bun/bin:$PATH"' >> ~/.profile
+   source ~/.profile
+   ```
+
+4. **Clone or copy the repo**:
+   ```bash
+   mkdir -p ~/src/dailyreport
+   cd ~/src/dailyreport
+   # Clone if you have git, or copy files manually
+   git clone https://github.com/your-org/dailyreport.git .
+   ```
+
+5. **Configure environment**:
+   ```bash
+   cp .env.example .env
+   nano .env  # Add your API_KEY
+   ```
+
+6. **Set up crontab**:
+   ```bash
+   crontab -e
+   # Add:
+   0 3 * * * /usr/bin/bun /volume1/home/admin/src/dailyreport/scripts/cron-trigger.ts >> /volume1/home/admin/dailyreport.log 2>&1
+   ```
+
+**Pros:**
+- Consistent environment with local testing
+- Can add more logic to the script later
+- Uses the same helper as other deployment methods
+
+#### Testing on Synology
+
+```bash
+# Test via SSH
+ssh admin@your-nas-ip
+curl -s -X POST https://things.jcodling.ca/projects/dailyreport/admin/cron/generate \
+  -H "X-API-Key: your-secret-api-key"
+
+# Check Task Scheduler logs
+# Go to: Task Scheduler → Event Log
+```
+
+#### Synology-Specific Security Tips
+
+1. **Restrict SSH access** to your home IP only (Control Panel → Security → Shared Folder)
+2. **Use HTTPS** for the cron endpoint (ensure SSL cert is valid)
+3. **Firewall rules** — restrict access to `/admin/cron/generate` by IP
+4. **API key storage** — use Synology's Password Manager to store and rotate the key
+5. **Email notifications** — configure in Task Scheduler → Settings → Email
+
+#### DSM Email Notification Setup (Optional)
+
+Want to know when the cron runs?
+
+1. **Task Scheduler** → **Settings** → **Email**
+2. Configure SMTP settings (Gmail, Office365, etc.)
+3. In the scheduled task → **Settings** tab:
+   - Check "Send notification email"
+   - Set conditions (e.g., "On failure" or "Always")
+
+```bash
+### Option D: Docker container
+```
+
+---
+
+### Option D: Docker container
 
 ## Testing Integration
 
@@ -251,7 +352,7 @@ bun run serve &
 | 1 | Create `.env` with secure API key | 5 min |
 | 2 | Test authentication locally | 10 min |
 | 3 | Push branch and deploy | 5 min |
-| 4 | Set up remote cron | 5 min |
+| 4 | Set up Synology Task Scheduler | 5 min |
 | 5 | Test first trigger | 5 min |
 | 6 | Monitor for 3-7 days | Ongoing |
 | 7 | Decommission launchd | 5 min |
