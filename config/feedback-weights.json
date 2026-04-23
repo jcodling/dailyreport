@@ -397,7 +397,7 @@
   "gantry": 0.1,
   "robotics": 0.1,
   "team": 0.1,
-  "from": 0.5,
+  "from": 0.6,
   "wissahickon": 0.1,
   "school": 0.1,
   "ambler": 0.1,
@@ -448,7 +448,7 @@
   "link": 0.1,
   "destroying": 0.1,
   "their": 0.2,
-  "anthropic": 0.2,
+  "anthropic": 0.30000000000000004,
   "announces": 0.2,
   "dispatch": 0.2,
   "control": 0.2,
@@ -637,7 +637,7 @@
   "president": -0.1,
   "without": -0.1,
   "exit": -0.1,
-  "plan": -0.1,
+  "plan": 0,
   "promised": -0.1,
   "loses": -0.1,
   "wins": -0.1,
@@ -700,5 +700,6 @@
   "nearly": -0.1,
   "battery": -0.1,
   "under": -0.1,
-  "minutes": -0.1
+  "minutes": -0.1,
+  "removed": 0.1
 }
