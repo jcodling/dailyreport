@@ -291,6 +291,7 @@ sudo pmset repeat wake MTWRFSU 02:55:00  # re-enable wake as needed
    - Use a strong, random API key (32+ characters)
    - Never commit `.env` to git
    - Rotate the key periodically
+   - Server validates API_KEY on startup and warns if weaker than 32 chars
 
 2. **HTTPS**
    - Always use HTTPS for the cron endpoint
@@ -300,9 +301,19 @@ sudo pmset repeat wake MTWRFSU 02:55:00  # re-enable wake as needed
    - Consider restricting access to `/admin/cron/generate` by IP
    - Only allow known cron server IPs
 
-4. **Logging**
+4. **Rate Limiting**
+   - Built-in rate limiting: 1 request per 5 minutes per API key
+   - Returns `429 Too Many Requests` when limit exceeded
+   - Prevents abuse if API key is compromised
+
+5. **Error Handling**
+   - Endpoint returns proper HTTP status codes (200 success, 401 unauthorized, 429 rate limited, 500 server error)
+   - Detailed errors logged server-side; generic messages returned to client
+   - Cron can detect failures via HTTP status code
+
+6. **Logging**
    - All triggers are logged via `log()` and `warn()` in `src/index.ts`
-   - Monitor logs for failed attempts
+   - Monitor logs for failed authentication attempts
 
 ## Troubleshooting
 

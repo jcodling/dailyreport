@@ -65,7 +65,7 @@ async function fetchAll(config: Config) {
   return [...hn, ...reddit, ...rss];
 }
 
-async function main() {
+export async function main() {
   const config = loadConfig();
   const reportsDir = join(PROJECT_ROOT, config.report_output_dir);
   const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -121,7 +121,7 @@ async function main() {
   log("Pre-filtering articles...");
   const seenUrlsFile = join(PROJECT_ROOT, "config/seen-urls.json");
   const seenUrls = loadSeenUrls(seenUrlsFile);
-  
+
   const blacklistFile = join(PROJECT_ROOT, "config/blacklist.json");
   let blacklistDomains = new Set<string>();
   if (require("fs").existsSync(blacklistFile)) {
@@ -182,7 +182,10 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error("Fatal error:", err);
-  process.exit(1);
-});
+// Run main if this is the entry point
+if (import.meta.main) {
+  main().catch((err) => {
+    console.error("Fatal error:", err);
+    process.exit(1);
+  });
+}

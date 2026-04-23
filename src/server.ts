@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, readdirSync, existsSync, unlinkSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import { warn } from "./log";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, "..");
@@ -55,6 +56,33 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
+// --- Rate Limiting ---
+
+interface RateLimitEntry {
+  count: number;
+  resetAt: number;
+}
+
+const rateLimits = new Map<string, RateLimitEntry>();
+
+function checkRateLimit(key: string, limit: number, windowMs: number): { allowed: boolean; resetAt?: number } {
+  const now = Date.now();
+  const entry = rateLimits.get(key);
+
+  if (!entry || now > entry.resetAt) {
+    rateLimits.set(key, { count: 1, resetAt: now + windowMs });
+    return { allowed: true };
+  }
+
+  if (entry.count >= limit) {
+    return { allowed: false, resetAt: entry.resetAt };
+  }
+
+  entry.count++;
+  rateLimits.set(key, entry);
+  return { allowed: true };
+}
+
 // --- Server ---
 
 const server = Bun.serve({
@@ -62,6 +90,9 @@ const server = Bun.serve({
   async fetch(req) {
     const url  = new URL(req.url);
     const path = url.pathname;
+
+    // Rate limit cron endpoint by IP
+    const clientIp = req.headers.get("X-Forwarded-For")?.split(",")[0] || req.headers.get("CF-Connecting-IP") || "127.0.0.1";
 
     // Serve SPA
     if (req.method === "GET" && (path === "/" || path === "/index.html")) {
@@ -182,26 +213,37 @@ const server = Bun.serve({
         return json({ error: "Unauthorized" }, 401);
       }
 
+      // Rate limit: 1 request per 5 minutes per API key (authenticated only)
+      const rateLimit = checkRateLimit(`cron:${apiKey}`, 1, 5 * 60 * 1000);
+      if (!rateLimit.allowed) {
+        const retryAfter = Math.ceil((rateLimit.resetAt! - Date.now()) / 1000);
+        return json({ error: "Too many requests", retryAfter }, 429);
+      }
+
       try {
-        import("../src/index")
-          .then(async ({ main }) => {
-            try {
-              await main();
-            } catch (err) {
-              warn("Report generation failed:", err);
-            }
-          })
-          .catch((err) => {
-            warn("Failed to load main:", err);
-          });
-        return json({ ok: true, message: "Report generation started" });
+        const module = await import("../src/index");
+        if (typeof module.main !== "function") {
+          throw new Error("main function not exported");
+        }
+        await module.main();
+        return json({ ok: true, message: "Report generated successfully" });
       } catch (err) {
-        return json({ error: String(err) }, 500);
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        warn("Report generation failed:", errorMsg);
+        return json({ error: "Report generation failed" }, 500);
       }
     }
 
     return new Response("Not found", { status: 404 });
   },
 });
+
+// Startup validation
+const apiKey = getApiKey();
+if (!apiKey) {
+  console.error("WARNING: API_KEY not set. Cron endpoint will return 401 Unauthorized.");
+} else if (apiKey.length < 32) {
+  console.warn(`WARNING: API_KEY is weak (${apiKey.length} chars). Recommend 32+ random characters.`);
+}
 
 console.log(`Daily Report viewer → http://localhost:${PORT}`);
