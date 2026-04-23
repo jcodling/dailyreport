@@ -10,6 +10,8 @@ const PORT = 3001;
 
 // --- Helpers ---
 
+const getApiKey = (): string | null => process.env.API_KEY || null;
+
 function getAvailableDates(): string[] {
   if (!existsSync(REPORTS_DIR)) return [];
   return readdirSync(REPORTS_DIR)
@@ -170,6 +172,32 @@ const server = Bun.serve({
       const filtered = blacklist.filter((d) => d !== body.domain);
       writeFileSync(blacklistFile, JSON.stringify(filtered, null, 2));
       return json({ ok: true });
+    }
+
+    // Cron trigger endpoint
+    const cronMatch = path === "admin/cron/generate";
+    if (req.method === "POST" && cronMatch) {
+      const apiKey = req.headers.get("X-API-Key");
+      if (!apiKey || apiKey !== getApiKey()) {
+        return json({ error: "Unauthorized" }, 401);
+      }
+
+      try {
+        import("../src/index")
+          .then(async ({ main }) => {
+            try {
+              await main();
+            } catch (err) {
+              warn("Report generation failed:", err);
+            }
+          })
+          .catch((err) => {
+            warn("Failed to load main:", err);
+          });
+        return json({ ok: true, message: "Report generation started" });
+      } catch (err) {
+        return json({ error: String(err) }, 500);
+      }
     }
 
     return new Response("Not found", { status: 404 });
