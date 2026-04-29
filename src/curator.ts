@@ -67,6 +67,7 @@ ${formatArticles(articles)}`;
   const proc = Bun.spawn([CLAUDE_BIN, "-p", prompt, "--model", CLAUDE_MODEL], {
     stdout: "pipe",
     stderr: "pipe",
+    stdin: "null",
     env,
   });
 
