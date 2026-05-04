@@ -3,6 +3,9 @@ import type { Article, CurationResult, CuratedArticle, FeedbackWeights, Topic } 
 const CLAUDE_BIN = process.env.CLAUDE_BIN!;
 const CLAUDE_MODEL = process.env.CLAUDE_MODEL!;
 const SNIPPET_LEN = 120;
+const CLAUDE_TIMEOUT_MS = 3 * 60 * 1000;
+const CLAUDE_MAX_ATTEMPTS = 5;
+const CLAUDE_BACKOFF_BASE_MS = 5_000;
 
 // Compact pipe-delimited article list — much cheaper than JSON
 function formatArticles(articles: Article[]): string {
@@ -24,6 +27,45 @@ function formatWeights(weights: FeedbackWeights): string {
   if (boosts.length) parts.push(`Boost: ${boosts.join(", ")}`);
   if (penalties.length) parts.push(`Penalize: ${penalties.join(", ")}`);
   return parts.join(" | ");
+}
+
+async function callClaudeCLI(prompt: string): Promise<string> {
+  const env = { ...process.env };
+  delete env.CLAUDECODE;
+
+  const proc = Bun.spawn([CLAUDE_BIN, "-p", prompt, "--model", CLAUDE_MODEL], {
+    stdout: "pipe",
+    stderr: "pipe",
+    stdin: "ignore",
+    env,
+  });
+
+  let timeoutId: ReturnType<typeof setTimeout>;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      proc.kill();
+      reject(new Error(`Claude CLI timed out after ${CLAUDE_TIMEOUT_MS / 1000}s`));
+    }, CLAUDE_TIMEOUT_MS);
+  });
+
+  let stdout: string, stderr: string;
+  try {
+    [stdout, stderr] = await Promise.race([
+      Promise.all([
+        new Response(proc.stdout).text(),
+        new Response(proc.stderr).text(),
+      ]),
+      timeoutPromise,
+    ]);
+  } finally {
+    clearTimeout(timeoutId!);
+  }
+
+  const exitCode = await proc.exited;
+  if (exitCode !== 0) {
+    throw new Error(`claude CLI exited with code ${exitCode}:\n${stderr}`);
+  }
+  return stdout;
 }
 
 // ID-based compact output schema — Claude returns IDs, we look up full articles
@@ -61,25 +103,22 @@ Schema:
 Articles (format: ID|Title|Source|Snippet):
 ${formatArticles(articles)}`;
 
-  const env = { ...process.env };
-  delete env.CLAUDECODE;
-
-  const proc = Bun.spawn([CLAUDE_BIN, "-p", prompt, "--model", CLAUDE_MODEL], {
-    stdout: "pipe",
-    stderr: "pipe",
-    stdin: "ignore",
-    env,
-  });
-
-  const [stdout, stderr] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-  ]);
-
-  const exitCode = await proc.exited;
-  if (exitCode !== 0) {
-    throw new Error(`claude CLI exited with code ${exitCode}:\n${stderr}`);
+  let stdout = "";
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= CLAUDE_MAX_ATTEMPTS; attempt++) {
+    try {
+      stdout = await callClaudeCLI(prompt);
+      break;
+    } catch (err) {
+      lastError = err;
+      if (attempt < CLAUDE_MAX_ATTEMPTS) {
+        const delay = CLAUDE_BACKOFF_BASE_MS * Math.pow(2, attempt - 1);
+        console.error(`Claude attempt ${attempt} failed, retrying in ${delay / 1000}s:`, err);
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
   }
+  if (!stdout) throw new Error(`Claude failed after ${CLAUDE_MAX_ATTEMPTS} attempts: ${lastError}`);
 
   const cleaned = stdout
     .replace(/^```(?:json)?\n?/m, "")
