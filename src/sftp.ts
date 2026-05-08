@@ -124,3 +124,51 @@ export async function uploadToday(localReportsDir: string): Promise<void> {
     await client.end();
   }
 }
+
+/**
+ * Fetches all historical reports from the server and saves them to a temp dir.
+ * Returns paths to downloaded report files (for feedback aggregation).
+ */
+export async function fetchAllHistoricalReports(
+  localReportsDir: string,
+  feedbackTempDir: string   // separate dir for feedback aggregation temp files
+): Promise<string[]> {
+  const remoteDir = process.env.FTP_REMOTE_REPORTS_DIR!;
+  const today = dateStr(0);
+
+  // Ensure temp dir exists for downloaded reports
+  try { require("fs").mkdirSync(feedbackTempDir, { recursive: true }); } catch {}
+  const client = await makeClient();
+  try {
+    const entries = await client.list(remoteDir);
+    const mdFiles = entries.filter((e: { name: string; isDirectory: boolean }) =>
+      !e.isDirectory && e.name.endsWith('.md')
+    ).map((e: { name: string }) => e.name);
+
+    const downloaded: string[] = [];
+    for (const filename of mdFiles) {
+      const reportDate = filename.replace('.md', '');
+      // Skip today's report (we generate it today)
+      if (reportDate === today) continue;
+      // Only fetch older reports (not last 48h - we have those locally)
+      const reportDateObj = new Date(reportDate);
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 2);
+      if (reportDateObj < cutoff) {
+        const destPath = join(feedbackTempDir, filename);
+        await client.fastGet(`${remoteDir}/${filename}`, destPath);
+        downloaded.push(destPath);
+      }
+    }
+
+    if (downloaded.length > 0) {
+      log(`   [sftp] Downloaded ${downloaded.length} historical reports for feedback aggregation`);
+    } else {
+      log(`   [sftp] No historical reports to aggregate (all recent days have local copies)`);
+    }
+
+    return downloaded;
+  } finally {
+    await client.end();
+  }
+}

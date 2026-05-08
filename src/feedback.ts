@@ -1,23 +1,17 @@
 import { readFileSync, writeFileSync, existsSync } from "fs";
-import { dirname, join } from "path";
+import { join } from "path";
 import { fileURLToPath } from "url";
 import type { FeedbackWeights } from "./types";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const PROJECT_ROOT = join(__dirname, "..");
-
-function yesterdayStr(): string {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return d.toISOString().split("T")[0];
-}
 
 function extractKeywords(title: string): string[] {
   return title
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .split(/\s+/)
-    .filter((w) => w.length > 3);
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 3);
 }
 
 function extractFeedbackVote(line: string): 1 | -1 | 0 {
@@ -29,29 +23,13 @@ function extractFeedbackVote(line: string): 1 | -1 | 0 {
   return 0;
 }
 
-export function parseFeedback(
-  weightsFile: string,
-  reportsDir: string
-): { summary: string; weights: FeedbackWeights } {
-  const weightsPath = join(PROJECT_ROOT, weightsFile);
-
-  let weights: FeedbackWeights = {};
-  if (existsSync(weightsPath)) {
-    try {
-      weights = JSON.parse(readFileSync(weightsPath, "utf-8"));
-    } catch {
-      weights = {};
-    }
+function parseReportForVotes(filePath: string): { positives: string[]; negatives: string[] } {
+  if (!existsSync(filePath)) {
+    return { positives: [], negatives: [] };
   }
 
-  const yesterdayFile = join(PROJECT_ROOT, reportsDir, `${yesterdayStr()}.md`);
-  if (!existsSync(yesterdayFile)) {
-    return { summary: "No previous report found.", weights };
-  }
-
-  const content = readFileSync(yesterdayFile, "utf-8");
+  const content = readFileSync(filePath, "utf-8");
   const lines = content.split("\n");
-
   const positives: string[] = [];
   const negatives: string[] = [];
 
@@ -59,42 +37,83 @@ export function parseFeedback(
     const vote = extractFeedbackVote(line);
     if (vote === 0) continue;
 
-    // Extract title from markdown link: [Title](url)
+     // Extract title from markdown link: [Title](url)
     const titleMatch = line.match(/\[([^\]]+)\]/);
     if (!titleMatch) continue;
-
     const title = titleMatch[1];
-    const keywords = extractKeywords(title);
-
     if (vote === 1) {
       positives.push(title);
+     } else {
+      negatives.push(title);
+     }
+   }
+
+  return { positives, negatives };
+}
+
+export function parseFeedback(
+  weightsFile: string,
+  reportsDir: string,
+  extraReportFiles?: string[]   // additional report file paths to aggregate feedback from
+): { summary: string; weights: FeedbackWeights } {
+  const weightsPath = join(PROJECT_ROOT, weightsFile);
+  let weights: FeedbackWeights = {};
+  if (existsSync(weightsPath)) {
+    try {
+      weights = JSON.parse(readFileSync(weightsPath, "utf-8"));
+    } catch {
+      weights = {};
+    }
+   }
+
+  // Aggregate feedback from yesterday's report (the one that will get updated with today's votes)
+  const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+  const yesterdayFile = join(PROJECT_ROOT, reportsDir, `${yesterdayStr}.md`);
+  
+  const positives: string[] = [];
+  const negatives: string[] = [];
+  
+  // Parse yesterday's report (for the standard feedback flow)
+  const yesterdayResult = parseReportForVotes(yesterdayFile);
+  positives.push(...yesterdayResult.positives);
+  negatives.push(...yesterdayResult.negatives);
+
+  // Parse all additional historical reports (from remote server, etc.)
+  if (extraReportFiles) {
+    for (const filePath of extraReportFiles) {
+      const result = parseReportForVotes(filePath);
+      positives.push(...result.positives);
+      negatives.push(...result.negatives);
+     }
+    }
+
+  // Apply feedback to weights if any votes were found
+  if (positives.length > 0 || negatives.length > 0) {
+    for (const title of positives) {
+       const keywords = extractKeywords(title);
       for (const kw of keywords) {
         weights[kw] = Math.min(1.0, (weights[kw] ?? 0) + 0.1);
-      }
-    }
+       }
+     }
 
-    if (vote === -1) {
-      negatives.push(title);
+    for (const title of negatives) {
+       const keywords = extractKeywords(title);
       for (const kw of keywords) {
         weights[kw] = Math.max(-1.0, (weights[kw] ?? 0) - 0.1);
-      }
-    }
-  }
+       }
+     }
 
-  // Persist updated weights only if feedback was found
-  if (positives.length > 0 || negatives.length > 0) {
     writeFileSync(weightsPath, JSON.stringify(weights, null, 2));
-  }
+   }
 
+  // Build summary
   const lines_summary: string[] = [];
   if (positives.length > 0) {
     lines_summary.push(`Liked (${positives.length}): ${positives.join("; ")}`);
-  }
+   }
   if (negatives.length > 0) {
-    lines_summary.push(
-      `Disliked (${negatives.length}): ${negatives.join("; ")}`
-    );
-  }
+    lines_summary.push(`Disliked (${negatives.length}): ${negatives.join("; ")}`);
+   }
 
   const topBoosts = Object.entries(weights)
     .filter(([, v]) => v > 0.2)
@@ -110,15 +129,15 @@ export function parseFeedback(
 
   if (topBoosts.length > 0) {
     lines_summary.push(`Boosted keywords: ${topBoosts.join(", ")}`);
-  }
+   }
   if (topPenalties.length > 0) {
     lines_summary.push(`Penalized keywords: ${topPenalties.join(", ")}`);
-  }
+   }
 
   const summary =
     lines_summary.length > 0
       ? lines_summary.join("\n")
-      : "No feedback reactions found in yesterday's report.";
+      : "No feedback reactions found in previous reports.";
 
   return { summary, weights };
 }
