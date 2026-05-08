@@ -1,4 +1,5 @@
 import type { Article } from "../types";
+import { log } from "../log";
 
 type RedditPost = {
   data: {
@@ -8,7 +9,8 @@ type RedditPost = {
     score: number;
     subreddit: string;
     permalink: string;
-   };
+    is_self: boolean;
+  };
 };
 
 type RedditResponse = {
@@ -18,87 +20,73 @@ type RedditResponse = {
 };
 
 /**
- * Get a Reddit access token using app-only OAuth (client credentials flow).
- * Needs REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET in .env.
+ * Fetch a single subreddit with retry and rate-limit handling.
  */
-async function getAccessToken(): Promise<string | null> {
-  const clientId = process.env.REDDIT_CLIENT_ID;
-  const clientSecret = process.env.REDDIT_CLIENT_SECRET;
+async function fetchSubredditQuiet(subreddit: string): Promise<Article[]> {
+  const url = `https://www.reddit.com/r/${subreddit}/hot.json?limit=25`;
+  const maxRetries = 3;
 
-  if (!clientId || !clientSecret) {
-    console.warn("Reddit fetcher: REDDIT_CLIENT_ID/SECRET not set — subreddit feeds will be skipped. Create a Reddit app at https://www.reddit.com/prefs/apps for credentials.");
-    return null;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": "dailyreport/1.0 (personal curation)" },
+       });
+      if (!res.ok) {
+         if (res.status === 429 && attempt < maxRetries - 1) {
+           const waitMs = (attempt + 1) * 3000; // 3s, 6s, 9s between retries
+           log(`   [reddit] r/${subreddit} rate-limited, retrying in ${waitMs}ms...`);
+           await new Promise((r) => setTimeout(r, waitMs));
+           continue;
+          }
+        console.warn(`Reddit fetch failed for r/${subreddit}: ${res.status}`);
+        return [];
+       }
+      const json = (await res.json()) as RedditResponse;
+      return json.data.children
+         .filter((p) => p.data.title && p.data.url)
+         .map((p) => ({
+          title: p.data.title,
+          url: p.data.is_self
+             ? `https://reddit.com${p.data.permalink}`
+             : p.data.url,
+          snippet: p.data.selftext
+             ? p.data.selftext.slice(0, 200)
+             : `r/${subreddit} — Score: ${p.data.score}`,
+          source: `Reddit r/${subreddit}`,
+          score: p.data.score,
+         }));
+      } catch (err) {
+      if (attempt < maxRetries - 1) {
+        log(`   [reddit] r/${subreddit} fetch error, retrying...`);
+        await new Promise((r) => setTimeout(r, 3000));
+        continue;
+         }
+        console.warn(`Reddit error for r/${subreddit}:`, err);
+        return [];
+       }
     }
-
-  try {
-    const res = await fetch("https://www.reddit.com/api/v1/access_token", {
-      method: "POST",
-      headers: {
-        "Authorization": `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-       },
-      body: "grant_type=client_credentials",
-     });
-    if (!res.ok) {
-      console.warn(`Reddit OAuth failed: ${res.status}`);
-      return null;
-     }
-    const data = await res.json();
-    return data.access_token;
-    } catch (err) {
-    console.warn("Reddit OAuth error:", err);
-    return null;
-    }
+  return [];
 }
-
-let tokenCache: { token: string; expiresAt: number } | null = null;
 
 /**
- * Fetches hot posts from a subreddit using Reddit's API with OAuth.
+ * Fetch subs in batches of 4 to avoid rate limiting.
+ * Reddit allows ~60 req/min; 23 subs with exponential delays would take too long.
+ * So we fetch in batches with a 3s pause between batches.
  */
-export async function fetchSubreddit(subreddit: string): Promise<Article[]> {
-  // Get or cache the access token
-  let token: string;
-  if (!tokenCache || Date.now() > tokenCache.expiresAt) {
-    const newToken = await getAccessToken();
-    if (!newToken) return [];
-    // Tokens last 1 hour
-    tokenCache = { token: newToken, expiresAt: Date.now() + 3600000 - 60000 };
-    token = newToken;
-    } else {
-    token = tokenCache.token;
-    }
-
-  const url = `https://oauth.reddit.com/r/${subreddit}/hot.json?limit=25`;
-  try {
-    const res = await fetch(url, {
-      headers: { "Authorization": `Bearer ${token}`, },
-     });
-    if (!res.ok) {
-      console.warn(`Reddit fetch failed for r/${subreddit}: ${res.status}`);
-      return [];
-     }
-    const json = (await res.json()) as RedditResponse;
-    return json.data.children
-       .filter((p) => p.data.title && p.data.url)
-       .map((p) => ({
-        title: p.data.title,
-        url: p.data.is_self
-           ? `https://reddit.com${p.data.permalink}`
-           : p.data.url,
-        snippet: p.data.selftext
-           ? p.data.selftext.slice(0, 200)
-           : `r/${subreddit} — Score: ${p.data.score}`,
-        source: `Reddit r/${subreddit}`,
-        score: p.data.score,
-       }));
-    } catch (err) {
-    console.warn(`Reddit error for r/${subreddit}:`, err);
-    return [];
-    }
-}
-
 export async function fetchReddit(subreddits: string[]): Promise<Article[]> {
-  const results = await Promise.all(subreddits.map(fetchSubreddit));
-  return results.flat();
+  const BATCH_SIZE = 4;
+  const BATCH_DELAY = 3000;
+  const allResults: Article[] = [];
+
+  for (let i = 0; i < subreddits.length; i += BATCH_SIZE) {
+    const batch = subreddits.slice(i, i + BATCH_SIZE);
+    console.log(`    Reddit batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(subreddits.length / BATCH_SIZE)}...`);
+    const results = await Promise.all(batch.map(fetchSubredditQuiet));
+    allResults.push(...results.flat());
+    if (i + BATCH_SIZE < subreddits.length) {
+      await new Promise((r) => setTimeout(r, BATCH_DELAY));
+      }
+    }
+
+  return allResults;
 }
