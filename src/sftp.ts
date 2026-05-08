@@ -17,9 +17,9 @@ function dateStr(offsetDays = 0): string {
 }
 
 /**
-  * Retry an async operation with exponential backoff.
-  * Retries up to maxRetries times, waiting 2s, 4s, 8s, etc. between attempts.
-  */
+ * Retry an async operation with exponential backoff.
+ * Retries up to maxRetries times, waiting 2s, 4s, 8s, etc. between attempts.
+ */
 async function withRetry<T>(
   fn: () => Promise<T>,
   maxRetries = 3,
@@ -42,8 +42,8 @@ async function withRetry<T>(
 }
 
 /**
-  * Creates an SFTP client and returns it.
-  */
+ * Creates an SFTP client and returns it.
+ */
 async function makeClient(): Promise<SftpClient> {
   const host     = process.env.FTP_HOST!;
   const username = process.env.FTP_USER!;
@@ -51,14 +51,14 @@ async function makeClient(): Promise<SftpClient> {
 
   const client = new SftpClient();
   await client.connect({ host, username, password, tryKeyboard: true });
-return client;
+  return client;
 }
 
 /**
-  * Downloads yesterday's report from IONOS.
-  * Overwrites the local copy so feedback.ts picks up any votes the user added.
-  * Returns true if downloaded, false if the file wasn't on the server yet.
-  */
+ * Downloads yesterday's report from IONOS.
+ * Overwrites the local copy so feedback.ts picks up any votes the user added.
+ * Returns true if downloaded, false if the file wasn't on the server yet.
+ */
 export async function downloadYesterday(localReportsDir: string): Promise<boolean> {
   const remoteDir = process.env.FTP_REMOTE_REPORTS_DIR!;
   const yesterday = dateStr(-1);
@@ -81,9 +81,9 @@ export async function downloadYesterday(localReportsDir: string): Promise<boolea
 }
 
 /**
-  * Downloads blacklist.json from IONOS.
-  * Overwrites the local copy so prefilter.ts applies user blacklists.
-  */
+ * Downloads blacklist.json from IONOS.
+ * Overwrites the local copy so prefilter.ts applies user blacklists.
+ */
 export async function downloadBlacklist(localPath: string): Promise<boolean> {
   const remoteDir = process.env.FTP_REMOTE_REPORTS_DIR!;
   const remoteFile = remoteDir.replace(/\/reports\/?$/, "") + "/blacklist.json";
@@ -106,9 +106,9 @@ export async function downloadBlacklist(localPath: string): Promise<boolean> {
 }
 
 /**
-  * Downloads access.log from IONOS, saves it locally, then deletes the remote copy.
-  * Returns the raw log content, or null if no log exists yet.
-  */
+ * Downloads access.log from IONOS, saves it locally, then deletes the remote copy.
+ * Returns the raw log content, or null if no log exists yet.
+ */
 export async function downloadAccessLog(localPath: string): Promise<string | null> {
   const remoteDir = process.env.FTP_REMOTE_REPORTS_DIR!;
   const remoteFile = remoteDir.replace(/\/reports\/?$/, "") + "/access.log";
@@ -132,8 +132,8 @@ export async function downloadAccessLog(localPath: string): Promise<string | nul
 }
 
 /**
-  * Uploads today's generated report to IONOS reports/.
-  */
+ * Uploads today's generated report to IONOS reports/.
+ */
 export async function uploadToday(localReportsDir: string): Promise<void> {
   const remoteDir = process.env.FTP_REMOTE_REPORTS_DIR!;
   const today     = dateStr(0);
@@ -154,9 +154,9 @@ export async function uploadToday(localReportsDir: string): Promise<void> {
 }
 
 /**
-  * Fetches all historical reports from the server and saves them to a temp dir.
-  * Returns paths to downloaded report files (for feedback aggregation).
-  */
+ * Fetches all historical reports from the server and saves them to a temp dir.
+ * Returns paths to downloaded report files (for feedback aggregation).
+ */
 export async function fetchAllHistoricalReports(
   localReportsDir: string,
   feedbackTempDir: string    // separate dir for feedback aggregation temp files

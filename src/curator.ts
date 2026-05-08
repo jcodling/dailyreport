@@ -90,17 +90,16 @@ export function curate(
     const categories = topics.map((t, i) => {
         const articles: CuratedArticle[] = sorted
             .filter((a) => a.bestTopic === i && topIds.has(a.url))
-            .map((a) => ({...a, reason: generateReason(a, topics)}))
-            .sort((a, b) => rankScore(b, articleDate) - rankScore(a, articleDate));
+             .map((a) => ({...a, reason: generateReason(a, topics)}));
         return { name: t.name, articles };
     });
 
     const unassigned = sorted.filter((a) => !topIds.has(a.url));
     let wildcard: ScoredArticle | undefined;
     if (unassigned.length > 0) {
-      wildcard = unassigned
-          .sort((a, b) => rankScore(b, articleDate) - rankScore(a, articleDate))[0];
-    }
+      const lowScoreCandidates = unassigned.filter((a) => a.bestScore < 1);
+      wildcard = lowScoreCandidates[0] ?? unassigned[0];
+       }
 
     // No articles left at all — return empty wildcard (renderer handles gracefully)
     if (!wildcard) {
