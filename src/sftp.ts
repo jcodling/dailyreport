@@ -44,7 +44,7 @@ async function withRetry<T>(
 /**
  * Creates an SFTP client and returns it.
  */
-async function makeClient(): Promise<SftpClient> {
+export async function makeClient(): Promise<SftpClient> {
   const host     = process.env.FTP_HOST!;
   const username = process.env.FTP_USER!;
   const password = process.env.FTP_PASS!;
@@ -170,8 +170,8 @@ export async function fetchAllHistoricalReports(
   try {
     const entries = await withRetry(() => client.list(remoteDir));
     const mdFiles = entries
-      .filter((e: { name: string; isDirectory: boolean }) => !e.isDirectory && e.name.endsWith(".md"))
-      .map((e: { name: string }) => e.name);
+      .filter((e) => e.type !== "d" && e.name.endsWith(".md"))
+      .map((e) => e.name);
 
     const downloaded: string[] = [];
     for (const filename of mdFiles) {
