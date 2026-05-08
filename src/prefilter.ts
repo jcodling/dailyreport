@@ -3,6 +3,10 @@ import type { Article, FeedbackWeights, Topic } from "./types";
 // Maximum wildcard candidates to keep (low-relevance but decent general quality)
 const WILDCARD_POOL_LIMIT = 15;
 
+// Stage 1: Allow 3× articlesPerCategory candidates per topic so the
+// curator has a broad pool to choose its top N from
+const CANDIDATE_MULTIPLIER = 3;
+
 export type ScoredArticle = Article & {
   topicScores: number[];
   bestScore: number;
@@ -92,7 +96,7 @@ export function prefilter(
 
   for (const a of scored) {
     const idx = a.bestTopic;
-    if (idx >= 0 && a.bestScore > 0 && perTopicCounts[idx] < articlesPerCategory * 3) {
+    if (idx >= 0 && a.bestScore > 0 && perTopicCounts[idx] < articlesPerCategory * CANDIDATE_MULTIPLIER) {
       assigned.add(a.url);
       perTopicCounts[idx]++;
     }
