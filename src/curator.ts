@@ -20,7 +20,7 @@ function recencyBonus(articleDate: string): number {
 }
 
 // ── Deterministic ranking score ──
-function rankScore(article: ScoredArticle, date: string, topics: Topic[]): number {
+function rankScore(article: ScoredArticle, date: string): number {
     let score = article.topicScores[article.bestTopic] * 2;   // base topic score
 
     // Source quality bonus
@@ -86,7 +86,7 @@ export function curate(
         const articles: CuratedArticle[] = scored
             .filter((a) => a.bestTopic === i && topIds.has(a.url))
             .map((a) => ({...a, reason: generateReason(a, topics)}))
-            .sort((a, b) => rankScore(b, articleDate, topics) - rankScore(a, articleDate, topics));
+            .sort((a, b) => rankScore(b, articleDate) - rankScore(a, articleDate));
         return { name: t.name, articles };
     });
 
@@ -94,7 +94,7 @@ export function curate(
     let wildcard: ScoredArticle | undefined;
     if (unassigned.length > 0) {
       wildcard = unassigned
-          .sort((a, b) => rankScore(b, articleDate, topics) - rankScore(a, articleDate, topics))[0];
+          .sort((a, b) => rankScore(b, articleDate) - rankScore(a, articleDate))[0];
     }
 
     // No articles left at all — return empty wildcard (renderer handles gracefully)
