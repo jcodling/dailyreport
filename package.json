@@ -1,7 +1,7 @@
 {
   "name": "dailyreport",
   "version": "1.0.0",
-  "description": "Automated daily content curation with deterministic topic scoring",
+  "description": "Automated daily content curation from HN, Reddit, and RSS — deterministic topic scoring, no AI required",
   "scripts": {
     "generate": "bun run src/index.ts",
     "dry-run": "bun run src/index.ts --dry-run",

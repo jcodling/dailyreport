@@ -1,6 +1,6 @@
 # Daily Report
 
-An automated daily content curation system that aggregates articles from Hacker News, Reddit, and RSS feeds, uses deterministic topic scoring to select the best picks across five interest categories, and serves them through a personal web UI with feedback-driven learning.
+An automated daily content curation system that aggregates articles from Hacker News, Reddit, and RSS feeds, uses deterministic topic scoring to select the best picks across six interest categories, and serves them through a personal web UI with feedback-driven learning.
 
 Zero external AI dependencies — runs entirely locally in ~1 second per curation pass.
 
@@ -242,4 +242,4 @@ Over time, the report adapts to surface articles you actually want to read. The 
 - **30-day deduplication** — A rolling URL window (`seen-urls.json`) prevents the same article appearing twice within a month.
 - **SFTP sync model** — The pipeline pulls yesterday's report plus all older reports to read votes, generates today's report, then pushes it. Reports older than 48 hours are downloaded into a temporary directory and cleaned up after feedback parsing.
 - **Keyword weights** — Simpler and more inspectable than embedding-based preference learning; the full weight map is readable JSON with each signal traceable back to a specific voted article.
-- **Zero external AI deps** — Claude Code CLI and all related env vars (`CLAUDE_BIN`, `CLAUDE_MODEL`) are no longer required. Curation completes in under 1 second.
+- **Deterministic, lightweight** — No LLM API calls needed; curation runs locally in under 1 second.
