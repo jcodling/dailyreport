@@ -97,7 +97,7 @@ export async function downloadBlacklist(localPath: string): Promise<boolean> {
     await withRetry(() => client.fastGet(remoteFile, localPath));
     log(`   [sftp] ↓ Downloaded blacklist.json`);
     return true;
-    } catch (err) {
+  } catch (err) {
     warn(`   [sftp] Failed to download blacklist.json:`, err);
     return false;
   } finally {
@@ -123,7 +123,7 @@ export async function downloadAccessLog(localPath: string): Promise<string | nul
     await withRetry(() => client.delete(remoteFile));
     log(`   [sftp] ↓ Downloaded access.log (reset on server)`);
     return readFileSync(localPath, "utf-8");
-    } catch (err) {
+  } catch (err) {
     warn(`   [sftp] Failed to download access.log:`, err);
     return null;
   } finally {
@@ -141,7 +141,7 @@ export async function uploadToday(localReportsDir: string): Promise<void> {
 
   if (!existsSync(localFile)) {
     throw new Error(`[sftp] Report not found at ${localFile}`);
-    }
+  }
 
   const client = await makeClient();
   try {
