@@ -133,7 +133,7 @@ export function parseFeedback(
     // gradually lose influence. 0.95 decay = ~14-day half-life.
   const decay = 0.95;
   for (const kw of Object.keys(weights)) {
-    weights[kw] *= decay;
+    weights[kw] = parseFloat((weights[kw] * decay).toFixed(2));
     // Prune near-zero weights to keep the file manageable
     if (Math.abs(weights[kw]) < 0.01) delete weights[kw];
      }
