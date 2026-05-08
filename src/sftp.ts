@@ -17,9 +17,9 @@ function dateStr(offsetDays = 0): string {
 }
 
 /**
- * Retry an async operation with exponential backoff.
- * Retries up to maxRetries times, waiting 2s, 4s, 8s, etc. between attempts.
- */
+  * Retry an async operation with exponential backoff.
+  * Retries up to maxRetries times, waiting 2s, 4s, 8s, etc. between attempts.
+  */
 async function withRetry<T>(
   fn: () => Promise<T>,
   maxRetries = 3,
@@ -29,21 +29,21 @@ async function withRetry<T>(
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       return await fn();
-     } catch (err: unknown) {
+    } catch (err: unknown) {
       lastErr = err as Error;
       if (attempt < maxRetries - 1) {
         const delay = baseDelay * Math.pow(2, attempt);
         log(`    [sftp] Retry ${attempt + 1}/${maxRetries} in ${delay / 1000}s`);
         await new Promise((r) => setTimeout(r, delay));
-       }
-     }
-   }
+      }
+    }
+  }
   throw lastErr!;
 }
 
 /**
- * Creates an SFTP client and returns it.
- */
+  * Creates an SFTP client and returns it.
+  */
 async function makeClient(): Promise<SftpClient> {
   const host     = process.env.FTP_HOST!;
   const username = process.env.FTP_USER!;
@@ -51,14 +51,14 @@ async function makeClient(): Promise<SftpClient> {
 
   const client = new SftpClient();
   await client.connect({ host, username, password, tryKeyboard: true });
-  return client;
+return client;
 }
 
 /**
- * Downloads yesterday's report from IONOS.
- * Overwrites the local copy so feedback.ts picks up any votes the user added.
- * Returns true if downloaded, false if the file wasn't on the server yet.
- */
+  * Downloads yesterday's report from IONOS.
+  * Overwrites the local copy so feedback.ts picks up any votes the user added.
+  * Returns true if downloaded, false if the file wasn't on the server yet.
+  */
 export async function downloadYesterday(localReportsDir: string): Promise<boolean> {
   const remoteDir = process.env.FTP_REMOTE_REPORTS_DIR!;
   const yesterday = dateStr(-1);
@@ -71,19 +71,19 @@ export async function downloadYesterday(localReportsDir: string): Promise<boolea
     if (!exists) {
       log(`   [sftp] ${yesterday}.md not on server yet — using local copy`);
       return false;
-     }
+    }
     await withRetry(() => client.fastGet(remoteFile, localFile));
     log(`   [sftp] ↓ Downloaded ${yesterday}.md`);
     return true;
-   } finally {
+  } finally {
     await client.end();
-   }
+  }
 }
 
 /**
- * Downloads blacklist.json from IONOS.
- * Overwrites the local copy so prefilter.ts applies user blacklists.
- */
+  * Downloads blacklist.json from IONOS.
+  * Overwrites the local copy so prefilter.ts applies user blacklists.
+  */
 export async function downloadBlacklist(localPath: string): Promise<boolean> {
   const remoteDir = process.env.FTP_REMOTE_REPORTS_DIR!;
   const remoteFile = remoteDir.replace(/\/reports\/?$/, "") + "/blacklist.json";
@@ -93,22 +93,22 @@ export async function downloadBlacklist(localPath: string): Promise<boolean> {
     const exists = await withRetry(() => client.exists(remoteFile));
     if (!exists) {
       return false;
-     }
+    }
     await withRetry(() => client.fastGet(remoteFile, localPath));
     log(`   [sftp] ↓ Downloaded blacklist.json`);
     return true;
-   } catch (err) {
+    } catch (err) {
     warn(`   [sftp] Failed to download blacklist.json:`, err);
     return false;
-   } finally {
+  } finally {
     await client.end();
-   }
+  }
 }
 
 /**
- * Downloads access.log from IONOS, saves it locally, then deletes the remote copy.
- * Returns the raw log content, or null if no log exists yet.
- */
+  * Downloads access.log from IONOS, saves it locally, then deletes the remote copy.
+  * Returns the raw log content, or null if no log exists yet.
+  */
 export async function downloadAccessLog(localPath: string): Promise<string | null> {
   const remoteDir = process.env.FTP_REMOTE_REPORTS_DIR!;
   const remoteFile = remoteDir.replace(/\/reports\/?$/, "") + "/access.log";
@@ -118,22 +118,22 @@ export async function downloadAccessLog(localPath: string): Promise<string | nul
     const exists = await withRetry(() => client.exists(remoteFile));
     if (!exists) {
       return null;
-     }
+    }
     await withRetry(() => client.fastGet(remoteFile, localPath));
     await withRetry(() => client.delete(remoteFile));
     log(`   [sftp] ↓ Downloaded access.log (reset on server)`);
     return readFileSync(localPath, "utf-8");
-   } catch (err) {
+    } catch (err) {
     warn(`   [sftp] Failed to download access.log:`, err);
     return null;
-   } finally {
+  } finally {
     await client.end();
-   }
+  }
 }
 
 /**
- * Uploads today's generated report to IONOS reports/.
- */
+  * Uploads today's generated report to IONOS reports/.
+  */
 export async function uploadToday(localReportsDir: string): Promise<void> {
   const remoteDir = process.env.FTP_REMOTE_REPORTS_DIR!;
   const today     = dateStr(0);
@@ -141,22 +141,22 @@ export async function uploadToday(localReportsDir: string): Promise<void> {
 
   if (!existsSync(localFile)) {
     throw new Error(`[sftp] Report not found at ${localFile}`);
-   }
+    }
 
   const client = await makeClient();
   try {
     await client.mkdir(remoteDir, true);
     await withRetry(() => client.fastPut(localFile, `${remoteDir}/${today}.md`));
     log(`   [sftp] ↑ Uploaded ${today}.md`);
-   } finally {
+  } finally {
     await client.end();
-   }
+  }
 }
 
 /**
- * Fetches all historical reports from the server and saves them to a temp dir.
- * Returns paths to downloaded report files (for feedback aggregation).
- */
+  * Fetches all historical reports from the server and saves them to a temp dir.
+  * Returns paths to downloaded report files (for feedback aggregation).
+  */
 export async function fetchAllHistoricalReports(
   localReportsDir: string,
   feedbackTempDir: string    // separate dir for feedback aggregation temp files
@@ -186,17 +186,17 @@ export async function fetchAllHistoricalReports(
         const destPath = join(feedbackTempDir, filename);
         await withRetry(() => client.fastGet(`${remoteDir}/${filename}`, destPath));
         downloaded.push(destPath);
-       }
-     }
+      }
+    }
 
     if (downloaded.length > 0) {
       log(`    [sftp] Downloaded ${downloaded.length} historical reports for feedback aggregation`);
-     } else {
+    } else {
       log(`    [sftp] No historical reports to aggregate (all recent days have local copies)`);
-     }
+    }
 
     return downloaded;
-   } finally {
+  } finally {
     await client.end();
-   }
+  }
 }

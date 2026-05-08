@@ -32,11 +32,11 @@ export function renderReport(result: CurationResult, outputDir: string): string 
   lines.push("## Wildcard Pick");
   lines.push("");
   if (result.wildcard) {
-        lines.push(
-               `> [${result.wildcard.title}](${result.wildcard.url}) — *${result.wildcard.source}*`
-             );
-        lines.push(`> ${result.wildcard.reason}`);
-       }
+      lines.push(
+        `> [${result.wildcard.title}](${result.wildcard.url}) — *${result.wildcard.source}*`
+      );
+      lines.push(`> ${result.wildcard.reason}`);
+      }
   lines.push("");
   lines.push("---");
   lines.push(
