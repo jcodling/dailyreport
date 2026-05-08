@@ -71,8 +71,13 @@ export function curate(
 
     topics.map((_, i) => perTopicUsed.set(i, 0));
 
+    // Pre-sort articles by rankScore so Stage 1 picks the best candidates
+    const sorted = [...scored].sort(
+        (a, b) => rankScore(b, articleDate) - rankScore(a, articleDate)
+    );
+
     // Process articles by best-topic, picking top N per category
-    for (const a of scored) {
+    for (const a of sorted) {
         if (a.bestTopic < 0) continue;
         const count = perTopicUsed.get(a.bestTopic) ?? 0;
         if (count < articlesPerCategory) {
@@ -83,14 +88,14 @@ export function curate(
 
     // ── Stage 2: Build categories ──
     const categories = topics.map((t, i) => {
-        const articles: CuratedArticle[] = scored
+        const articles: CuratedArticle[] = sorted
             .filter((a) => a.bestTopic === i && topIds.has(a.url))
             .map((a) => ({...a, reason: generateReason(a, topics)}))
             .sort((a, b) => rankScore(b, articleDate) - rankScore(a, articleDate));
         return { name: t.name, articles };
     });
 
-    const unassigned = scored.filter((a) => !topIds.has(a.url));
+    const unassigned = sorted.filter((a) => !topIds.has(a.url));
     let wildcard: ScoredArticle | undefined;
     if (unassigned.length > 0) {
       wildcard = unassigned
