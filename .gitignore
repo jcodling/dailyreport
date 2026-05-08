@@ -2,6 +2,7 @@
 public/config.php
 reports/
 logs/
+feedback-historical/
 node_modules/
 dist/
 .vscode/

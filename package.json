@@ -1,7 +1,7 @@
 {
   "name": "dailyreport",
   "version": "1.0.0",
-  "description": "Automated daily content curation with Claude AI",
+  "description": "Automated daily content curation with deterministic topic scoring",
   "scripts": {
     "generate": "bun run src/index.ts",
     "dry-run": "bun run src/index.ts --dry-run",
