@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { readFileSync, existsSync, readdirSync, unlinkSync, rmdirSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { execSync } from "child_process";
@@ -118,14 +118,8 @@ async function main() {
   
   if (!isDryRun && ftpEnabled) {
     // Gather all downloaded historical report files
-    const fs = require("fs");
-    try {
-      if (fs.existsSync(feedbackDir)) {
-        const files = fs.readdirSync(feedbackDir);
-        extraReports = files.map(f => join(feedbackDir, f)).filter(f => f.endsWith('.md'));
-         log(`    [feedback] Aggregating feedback from ${extraReports.length} historical reports`);
-        }
-      } catch { /* feedback dir may not exist yet */ }
+    const files = readdirSync(feedbackDir);
+    extraReports = files.map(f => join(feedbackDir, f)).filter(f => f.endsWith('.md'));         log(`    [feedback] Aggregating feedback from ${extraReports.length} historical reports`);
     }
 
   const { summary: feedbackSummary, weights } = parseFeedback(
@@ -148,9 +142,9 @@ async function main() {
   
   const blacklistFile = join(PROJECT_ROOT, "config/blacklist.json");
   let blacklistDomains = new Set<string>();
-  if (require("fs").existsSync(blacklistFile)) {
+  if (existsSync(blacklistFile)) {
     try {
-      const parsed = JSON.parse(require("fs").readFileSync(blacklistFile, "utf-8"));
+      const parsed = JSON.parse(readFileSync(blacklistFile, "utf-8"));
       blacklistDomains = new Set(parsed);
         } catch {}
     }
@@ -208,9 +202,8 @@ async function main() {
      // Clean up temporary feedback reports
   if (!isDryRun && ftpEnabled) {
     try {
-      const fs = require("fs");
-      if (fs.existsSync(feedbackDir)) {
-        const files = fs.readdirSync(feedbackDir);
+      if (existsSync(feedbackDir)) {
+        const files = readdirSync(feedbackDir);
         for (const f of files) {
           fs.unlinkSync(join(feedbackDir, f));
           }
