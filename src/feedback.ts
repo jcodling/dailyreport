@@ -129,6 +129,16 @@ export function parseFeedback(
         }
       }
 
+    // Apply weight decay: each run reduces weights toward zero so old signals
+    // gradually lose influence. 0.95 decay = ~14-day half-life.
+  const decay = 0.95;
+  for (const kw of Object.keys(weights)) {
+    weights[kw] *= decay;
+    // Prune near-zero weights to keep the file manageable
+    if (Math.abs(weights[kw]) < 0.01) delete weights[kw];
+     }
+
+    // Persist updated weights
     writeFileSync(weightsPath, JSON.stringify(weights, null, 2));
     }
 
