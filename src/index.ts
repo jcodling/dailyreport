@@ -107,8 +107,6 @@ async function main() {
           }
         } else {
         log("FTP: No FTP configured — running with local state only");
-        // Even without FTP, check if there's a feedback-historical dir from a previous run
-        const fetchStats = false; // no FTP available
       }
 
      // Step 2: Parse feedback from all historical reports
@@ -169,7 +167,6 @@ async function main() {
   const curationResult = curate(
       scored,
       config.topics,
-      weights,
       todayStr(),
       config.articles_per_category
     );

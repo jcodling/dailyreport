@@ -1,4 +1,4 @@
-import type { Article, CurationResult, CuratedArticle, FeedbackWeights, Topic } from "./types";
+import type { Article, CurationResult, CuratedArticle, Topic } from "./types";
 import type { ScoredArticle } from "./prefilter";
 
 // ── Source quality bonus (optional, for notable sources) ──
@@ -42,7 +42,7 @@ function rankScore(article: ScoredArticle, date: string, topics: Topic[]): numbe
 }
 
 // ── Generate a one-sentence reason deterministically ──
-function generateReason(article: ScoredArticle, topics: Topic[], _weights: FeedbackWeights): string {
+function generateReason(article: ScoredArticle, topics: Topic[]): string {
     const t = topics[article.bestTopic];
     if (!t) return "General interest article";
 
@@ -62,7 +62,6 @@ function generateReason(article: ScoredArticle, topics: Topic[], _weights: Feedb
 export function curate(
     scored: ScoredArticle[],
     topics: Topic[],
-    weights: FeedbackWeights,
     articleDate: string,
     articlesPerCategory: number
 ): CurationResult {
@@ -86,25 +85,16 @@ export function curate(
     const categories = topics.map((t, i) => {
         const articles: CuratedArticle[] = scored
             .filter((a) => a.bestTopic === i && topIds.has(a.url))
-            .map((a) => ({...a, reason: generateReason(a, topics, weights)}))
+            .map((a) => ({...a, reason: generateReason(a, topics)}))
             .sort((a, b) => rankScore(b, articleDate, topics) - rankScore(a, articleDate, topics));
         return { name: t.name, articles };
     });
 
-    // ── Wildcard: best unassigned article (prefer low topic scores, fallback to best remaining) ──
     const unassigned = scored.filter((a) => !topIds.has(a.url));
     let wildcard: ScoredArticle | undefined;
-
-    // Prefer articles that don't strongly fit any category
-    const lowScoreCandidates = unassigned.filter((a) => a.bestScore < 1);
-    wildcard = lowScoreCandidates
-        .sort((a, b) => rankScore(b, articleDate, topics) - rankScore(a, articleDate, topics))
-        [0];
-
-    // Fallback: if nothing had low scores, pick the best unassigned
-    if (!wildcard && unassigned.length > 0) {
-        wildcard = unassigned
-            .sort((a, b) => rankScore(b, articleDate, topics) - rankScore(a, articleDate, topics))[0];
+    if (unassigned.length > 0) {
+      wildcard = unassigned
+          .sort((a, b) => rankScore(b, articleDate, topics) - rankScore(a, articleDate, topics))[0];
     }
 
     // No articles left at all — return empty wildcard (renderer handles gracefully)
