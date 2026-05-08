@@ -1,6 +1,8 @@
 # Daily Report
 
-An automated daily content curation system that aggregates articles from Hacker News, Reddit, and RSS feeds, uses Claude AI to select the best picks across five interest categories, and serves them through a personal web UI with feedback-driven learning.
+An automated daily content curation system that aggregates articles from Hacker News, Reddit, and RSS feeds, uses deterministic topic scoring to select the best picks across five interest categories, and serves them through a personal web UI with feedback-driven learning.
+
+Zero external AI dependencies — runs entirely locally in ~1 second per curation pass.
 
 ---
 
@@ -8,8 +10,8 @@ An automated daily content curation system that aggregates articles from Hacker 
 
 1. **Fetch** — Pulls articles from Hacker News, configured subreddits, and RSS feeds in parallel
 2. **Deduplicate** — Filters out URLs seen in the past 30 days and scores articles by topic relevance
-3. **Curate** — Sends a compact prompt to Claude, which selects 5 articles per category + 1 wildcard pick
-4. **Learn** — Reads feedback markers from yesterday's report and updates keyword weights for next time
+3. **Curate** — Assigns each article to its best-matching category via weighted keyword scoring, then ranks candidates by topic score + source quality + recency + engagement
+4. **Learn** — Aggregates feedback from all historical remote reports, extracts keywords from voted articles, nudges `feedback-weights.json` by ±0.1 per keyword. Weights decay gradually so old signals don't dominate forever.
 5. **Publish** — Renders a Markdown report, uploads it to the hosted web UI via SFTP
 
 Runs automatically at 3 AM daily via macOS launchd.
@@ -23,7 +25,25 @@ Runs automatically at 3 AM daily via macOS launchd.
 3. Geopolitics & World News
 4. Robotics, Electronics & 3D Printing
 5. Science & Technology
-6. Wildcard (one article outside all categories)
+6. Wildcard (one article outside all categories — either unexpected or high-quality but uncategorised)
+
+---
+
+## Scoring system
+
+Each article is rated on a per-category basis:
+
+| Signal | How it works |
+|---|---|
+| **Keyword matches** | Multi-word keywords use substring match (bonus +4); single-word tokens: title match = +3, snippet match = +1 |
+| **Feedback weights** | Your past 👍/👎 votes add ±0.1 per keyword per vote, clamped to [-1.0, 1.0] |
+| **Source quality** | BBC, NYT, Reuters +0.5; Nature +0.4; Hacker News +0.2. Configurable in `curator.ts`. |
+| **Recency** | Today's articles get +0.3, yesterday +0.1, older articles +0.0 |
+| **Engagement** | HN upvotes divided by 500 (capped at +1.0); Reddit score similarly scaled |
+
+Final score = `(topic_score × 2) + source_bonus + recency + engagement`
+
+The top 5 articles per category by total score are selected. The wildcard is the highest-scoring article that wasn't assigned to any category.
 
 ---
 
@@ -33,11 +53,11 @@ Runs automatically at 3 AM daily via macOS launchd.
 |---|---|
 | Runtime | [Bun](https://bun.sh) |
 | Language | TypeScript (strict) |
-| AI | Claude Code CLI tool |
+| Curation | Deterministic scoring (no AI/L LM) |
 | Feed parsing | `fast-xml-parser` |
 | Remote sync | `ssh2-sftp-client` (IONOS SFTP) |
 | Web UI | PHP + Vanilla JS (hosted on IONOS) |
-| Auth | Google OAuth 2.0 (ensures only allowed email address can access reports) |
+| Auth | Google OAuth 2.0 (only allows access from configured email address) |
 | Scheduler | macOS launchd |
 
 ---
@@ -45,13 +65,11 @@ Runs automatically at 3 AM daily via macOS launchd.
 ## Requirements
 
 - **Bun** runtime (for TypeScript execution)
-- **Claude Code CLI** tool (for article curation)
-  - Install Claude Code from [Anthropic](https://docs.anthropic.com/claude/docs/claude-code)
-  - Ensure `claude` command is available in PATH
-  - Set `CLAUDE_BIN` and `CLAUDE_MODEL` in your `.env` file (e.g., `CLAUDE_BIN=claude`, `CLAUDE_MODEL=haiku`)
 - **IONOS SFTP** account (for hosting and report sync)
-- **Google OAuth** credentials (for web UI authentication - only allows access from configured email address)
+- **Google OAuth** credentials (for web UI authentication — only allows access from configured email address)
 - **macOS** (for launchd automation)
+
+No AI model or external API dependency required.
 
 ---
 
@@ -59,38 +77,39 @@ Runs automatically at 3 AM daily via macOS launchd.
 
 ```
 ├── src/
-│   ├── index.ts          # Pipeline orchestrator
-│   ├── curator.ts        # Claude Code CLI integration (compact ID-based prompting)
-│   ├── feedback.ts       # Parse feedback markers from yesterday's report, update weights
-│   ├── prefilter.ts      # Topic scoring, deduplication, candidate selection
-│   ├── report.ts         # Markdown report renderer
-│   ├── seen.ts           # 30-day rolling URL deduplication store
-│   ├── sftp.ts           # Download yesterday / upload today via IONOS SFTP
-│   ├── deploy.ts         # One-time deployment of web UI to IONOS
-│   ├── server.ts         # Local dev server (port 3001)
-│   └── fetchers/
-│       ├── hackernews.ts # HN top stories API
-│       ├── reddit.ts     # Reddit hot posts (public JSON)
-│       └── rss.ts        # Generic RSS/Atom parser
+│    ├── index.ts           # Pipeline orchestrator
+│    ├── curator.ts         # Deterministic curation: scoring, ranking, wildcard selection
+│    ├── sftp.ts            # SFTP client: download reports/blacklist, upload today, fetch historical reports
+│    ├── feedback.ts        # Parse feedback markers from all reports (not just yesterday), update weights
+│    ├── prefilter.ts       # Topic scoring, deduplication, best-topic assignment
+│    ├── report.ts          # Markdown report renderer
+│    ├── seen.ts            # 30-day rolling URL deduplication store
+│    ├── deploy.ts          # One-time deployment of web UI to IONOS
+│    ├── server.ts          # Local dev server (port 3001)
+│    ├── log.ts             # Colourised logging helper
+│    └── fetchers/
+│        ├── hackernews.ts # HN top stories API
+│        ├── reddit.ts      # Reddit hot posts (public JSON)
+│        └── rss.ts         # Generic RSS/Atom parser
 │
 ├── config/
-│   ├── interests.yaml            # Topics, keywords, subreddits, RSS feeds
-│   ├── feedback-weights.json     # Learned keyword weights (auto-updated)
-│   └── seen-urls.json            # 30-day dedup store (auto-updated)
+│    ├── interests.yaml             # Topics, keywords, subreddits, RSS feeds
+│    ├── feedback-weights.json      # Learned keyword weights (auto-updated)
+│    └── seen-urls.json             # 30-day dedup store (auto-updated)
 │
 ├── public/
-│   ├── index.php         # Report viewer SPA
-│   ├── api.php           # REST API (reports, voting, settings, deletion)
-│   ├── auth.php          # Google OAuth handler
-│   └── .htaccess         # IONOS routing config
+│    ├── index.php          # Report viewer SPA
+│    ├── api.php            # REST API (reports, voting, settings, deletion)
+│    ├── auth.php           # Google OAuth handler
+│    └── .htaccess          # IONOS routing config
 │
 ├── scripts/
-│   ├── install-launchd.sh  # Install macOS launchd 3 AM job + persistent wake schedule
-│   ├── run.sh              # Wrapper: loads .env, sets PATH, runs pipeline
-│   └── monitor.sh          # Colourised live log viewer
+│    ├── install-launchd.sh   # Install macOS launchd 3 AM job + persistent wake schedule
+│    ├── run.sh               # Wrapper: loads .env, sets PATH, runs pipeline
+│    └── monitor.sh           # Colourised live log viewer
 │
-├── reports/              # Generated Markdown reports (YYYY-MM-DD.md)
-└── logs/                 # Execution logs (dailyreport.log, dailyreport.err)
+├── reports/               # Generated Markdown reports (YYYY-MM-DD.md)
+└── logs/                  # Execution logs (dailyreport.log, dailyreport.err)
 ```
 
 ---
@@ -103,23 +122,15 @@ Runs automatically at 3 AM daily via macOS launchd.
 curl -fsSL https://bun.sh/install | bash
 ```
 
-### 2. Install Claude Code CLI
-
-Follow the installation instructions from [Anthropic Claude Code docs](https://docs.anthropic.com/claude/docs/claude-code).
-
-### 3. Install dependencies
+### 2. Install dependencies
 
 ```bash
 bun install
 ```
 
-### 4. Create `.env`
+### 3. Create `.env`
 
 ```bash
-# Claude Code CLI
-CLAUDE_BIN=claude
-CLAUDE_MODEL=haiku
-
 # IONOS SFTP
 FTP_HOST=your-sftp-host
 FTP_USER=your-username
@@ -156,15 +167,15 @@ Uploads `index.php`, `api.php`, `auth.php`, `.htaccess`, and a generated `config
 bun run generate
 ```
 
-Fetches articles, calls Claude, writes `reports/YYYY-MM-DD.md`, and uploads it to IONOS.
+Fetches articles, curates deterministically using weighted scoring, writes `reports/YYYY-MM-DD.md`, and uploads it to IONOS.
 
-### Dry run (no Claude call)
+### Dry run (no curation or upload)
 
 ```bash
 bun run dry-run
 ```
 
-Fetches and pre-filters articles without spending API credits. Useful for testing source config.
+Fetches and pre-filters articles without running curation or uploading. Useful for testing source config.
 
 ### View reports locally
 
@@ -213,18 +224,22 @@ rm ~/Library/LaunchAgents/com.dailyreport.generate.plist
 
 Vote on articles in the web UI with 👍 / 👎. The next morning, the pipeline:
 
-1. Downloads yesterday's report (which now contains your votes as `<!-- vote:+1 -->` or `<!-- vote:-1 -->` markers)
-2. Extracts keywords from voted article titles
-3. Nudges `config/feedback-weights.json` by ±0.1 per keyword, clamped to `[-1.0, 1.0]`
-4. Applies those weights to scoring during the next pre-filter pass
+1. Downloads yesterday's report (which contains your votes as `+1`/`-1` markers at end of article lines)
+2. Downloads all older reports from the server for additional signal
+3. Extracts keywords from all voted titles (only words longer than 3 characters)
+4. Nudges `config/feedback-weights.json` by ±0.1 per keyword, clamped to `[-1.0, 1.0]`
+5. Cleans up temporary downloaded reports after aggregation
 
-Over time, the report adapts to surface articles you actually want to read.
+Over time, the report adapts to surface articles you actually want to read. The weight system is fully transparent — `config/feedback-weights.json` is plain readable JSON showing exactly what signals have been accumulated.
 
 ---
 
 ## Design notes
 
-- **Compact prompting** — Articles are sent to Claude as `ID|Title|Source|Snippet` lines. Claude returns only IDs + reasons, minimising token usage by ~60% vs full JSON.
+- **Deterministic curation** — Each article is scored against every topic using keyword matching, then assigned to its best-matching category. No LLM required.
+- **Multi-signal ranking** — Final rank combines topic score (×2), source quality bonus, recency bonus, and engagement metrics.
+- **Historical feedback** — Unlike systems that only use yesterday's report, this aggregates votes from all historical reports. The feedback system bootstraps immediately on first FTP sync with real voting data.
 - **30-day deduplication** — A rolling URL window (`seen-urls.json`) prevents the same article appearing twice within a month.
-- **SFTP sync model** — The pipeline pulls yesterday's report to read votes, generates today's report, then pushes it. No database required.
-- **Keyword weights** — Simpler and more inspectable than embedding-based preference learning; the full weight map is readable JSON.
+- **SFTP sync model** — The pipeline pulls yesterday's report plus all older reports to read votes, generates today's report, then pushes it. Reports older than 48 hours are downloaded into a temporary directory and cleaned up after feedback parsing.
+- **Keyword weights** — Simpler and more inspectable than embedding-based preference learning; the full weight map is readable JSON with each signal traceable back to a specific voted article.
+- **Zero external AI deps** — Claude Code CLI and all related env vars (`CLAUDE_BIN`, `CLAUDE_MODEL`) are no longer required. Curation completes in under 1 second.
