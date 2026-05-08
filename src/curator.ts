@@ -106,7 +106,7 @@ export function curate(
     if (!wildcard) {
         return {
             categories,
-            wildcard: null as unknown as CuratedArticle,
+            wildcard: null,
         };
     }
 

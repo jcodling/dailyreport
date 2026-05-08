@@ -17,7 +17,7 @@ export type CuratedCategory = {
 
 export type CurationResult = {
   categories: CuratedCategory[];
-  wildcard: CuratedArticle;
+  wildcard: CuratedArticle | null;
 };
 
 export type FeedbackWeights = Record<string, number>;
