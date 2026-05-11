@@ -59,7 +59,7 @@ info "Image built: $IMAGE_TAG ($(( IMG_SIZE / 1024 / 1024 ))MB)"
 # --- Step 2: Save image and transfer to NAS -------------------
 info "Saving and transferring image to NAS ($NAS_IP)..."
 docker save -o "$IMAGE_FILE" "$IMAGE_TAG"
-scp "$IMAGE_FILE" "${NAS_USER}@${NAS_IP}:/tmp/"
+sshpass -p "$NAS_PASS" scp -o StrictHostKeyChecking=no "$IMAGE_FILE" "${NAS_USER}@${NAS_IP}:/tmp/"
 rm -f "$IMAGE_FILE"
 info "Image transferred to NAS."
 
