@@ -22,7 +22,7 @@ set -euo pipefail
 
 NAS_IP="${NAS_IP:-"192.168.1.100"}"
 NAS_USER="${NAS_USER:-"admin"}"
-NAS_PASS="${NAS_PASS:""}"
+NAS_PASS="${NAS_PASS:-}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
