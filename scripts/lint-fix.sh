@@ -44,7 +44,7 @@ while IFS= read -r file; do
     needs_fix=0
 
     # Check trailing whitespace
-    if grep -En '[[:space:]]+$' "$file" >/dev/null 2>&1; then
+    if grep -E '[[:space:]]+$' "$file" >/dev/null 2>&1; then
         needs_fix=1
     fi
 
