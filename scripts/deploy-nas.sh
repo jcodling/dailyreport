@@ -105,7 +105,7 @@ docker rm $CONTAINER_NAME 2>/dev/null || true
 docker run -d \
      --name $CONTAINER_NAME \
      --restart no \
-     $(if [ -f /volume1${DOCKER_DIR}/.env ]; then echo '--env-file /volume1/docker/dailyreport/.env'; fi) \
+     --env-file /volume1${DOCKER_DIR}/.env \
      -v /volume1${DOCKER_DIR}:/app \
      $IMAGE_TAG
 HEREDOC
