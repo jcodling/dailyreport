@@ -1,0 +1,31 @@
+# Version control
+.git
+.gitignore
+
+# IDE
+.vscode
+
+# Dependencies (reinstalled inside container)
+node_modules
+
+# Mac-specific artefacts
+.DS_Store
+
+# Docker files (don't nest)
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Documentation
+README.md
+DOCKER-DEPLOY.md
+
+# Logs & reports (mounted as volumes at runtime)
+logs/
+reports/
+
+# Feedback historical (temporary, cleaned up by the script)
+feedback-historical/
+
+# Local environment file (injected at runtime)
+.env

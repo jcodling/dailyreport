@@ -1,0 +1,27 @@
+# ============================================================
+# DailyReport — Docker Compose
+#
+# For users who prefer `docker-compose up` over the CLI deploy
+# script.  Not required — the deploy script (scripts/deploy-nas.sh)
+# handles everything.
+#
+# Usage:
+#   docker-compose -p dailyreport up -d
+#   docker-compose -p dailyreport down
+# ============================================================
+
+services:
+  dailyreport:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dailyreport_daily
+    restart: "no"                  # one-shot — exits after generating report
+    env_file:
+      - .env                        # SFTP and OAuth credentials
+    volumes:
+       - dailyreport-data:/app     # persists reports, config, logs
+
+volumes:
+  dailyreport-data:
+    driver: local
