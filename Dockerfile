@@ -19,7 +19,7 @@ WORKDIR /app
 
 # --- Dependency install (layer-cached: changes when these change) ---
 COPY package.json bun.lock ./
-RUN bun install --production
+RUN bun install --frozen-lockfile --production
 
 # --- Application source ---
 COPY . .
