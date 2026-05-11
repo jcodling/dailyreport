@@ -35,7 +35,7 @@ if [ "$IN_CONTAINER" = "1" ]; then
 else
   # On macOS: keep the machine awake via caffeine, and wake it the next day
   caffeinate -i "$HOME/.bun/bin/bun" run "$PROJECT_DIR/src/index.ts"
-  
+
   # Ensure recurring wake at 2:55am
   if ! pmset -g sched 2>/dev/null | grep -q "2:55"; then
     sudo pmset repeat wake MTWRFSU 02:55:00 2>/dev/null \
