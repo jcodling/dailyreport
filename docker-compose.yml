@@ -1,0 +1,30 @@
+# ============================================================
+# DailyReport — Docker Compose
+#
+# For users who prefer `docker-compose up` over the CLI deploy
+# script. Not required — the deploy script (scripts/deploy-nas.sh)
+# handles everything.
+#
+# Usage:
+#   docker-compose -p dailyreport up -d
+#   docker-compose -p dailyreport down
+# ============================================================
+
+services:
+  dailyreport:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dailyreport_daily
+    restart: "no"
+    env_file:
+      - .env
+    volumes:
+      # Note: This named volume is for local development only.
+      # NAS deployments use a bind mount rather than a named volume,
+      # so that the storage directory is accessible from Synology File Station.
+      - dailyreport-data:/app
+
+volumes:
+  dailyreport-data:
+    driver: local
