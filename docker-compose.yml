@@ -20,6 +20,9 @@ services:
     env_file:
       - .env
     volumes:
+      # Note: This named volume is for local development only.
+      # NAS deployments use a bind mount rather than a named volume,
+      # so that the storage directory is accessible from Synology File Station.
       - dailyreport-data:/app
 
 volumes:
