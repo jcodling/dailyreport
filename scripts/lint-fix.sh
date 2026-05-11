@@ -22,6 +22,7 @@ for arg in "$@"; do
       ;;
       *)
         echo "Unknown option: $arg" >&2
+        exit 1
       ;;
     esac
 done
@@ -30,7 +31,7 @@ changed=0
 
 # --- Get list of files ----------------------------------------
 if [ "$SCAN_ALL" = "1" ]; then
-    files=$(git ls-files -z --exclude-standard 2>/dev/null | tr '\0' '\n')
+    files=$(git ls-files -z --others --exclude-standard 2>/dev/null | tr '\0' '\n')
 else
     files=$(git ls-files -z 2>/dev/null | tr '\0' '\n')
 fi

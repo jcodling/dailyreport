@@ -40,8 +40,8 @@ if [ -n "$staged_files" ]; then
 
         # Check for tabs (skip Makefiles — they require tabs)
         if [[ "$file" != Makefile ]]; then
-            if git grep --cached -P '\t' -- "$file" >/dev/null 2>&1; then
-                tab_count=$(git grep --cached -Pn '\t' -- "$file" 2>/dev/null | wc -l | tr -d ' ')
+            if git grep --cached -F $'\t' -- "$file" >/dev/null 2>&1; then
+                tab_count=$(git grep --cached -F -n $'\t' -- "$file" 2>/dev/null | wc -l | tr -d ' ')
                 echo -e "${YELLOW}WARN:${NC} ${tab_count} tab(s) in ${file} (use spaces)"
             fi
         fi
