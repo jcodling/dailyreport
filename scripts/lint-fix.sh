@@ -12,19 +12,25 @@ set -euo pipefail
 DRY_RUN=0
 SCAN_ALL=0
 
-if [ "${1:-}" = "--dry-run" ]; then
-    DRY_RUN=1
-fi
-
-if [ "${2:-}" = "--all" ]; then
-    SCAN_ALL=1
-fi
+for arg in "$@"; do
+    case "$arg" in
+      --dry-run)
+        DRY_RUN=1
+      ;;
+      --all)
+        SCAN_ALL=1
+      ;;
+      *)
+        echo "Unknown option: $arg" >&2
+      ;;
+    esac
+done
 
 changed=0
 
 # --- Get list of files ----------------------------------------
 if [ "$SCAN_ALL" = "1" ]; then
-    files=$(git ls-files -z --no-exclude-standard 2>/dev/null | tr '\0' '\n')
+    files=$(git ls-files -z --exclude-standard 2>/dev/null | tr '\0' '\n')
 else
     files=$(git ls-files -z 2>/dev/null | tr '\0' '\n')
 fi
