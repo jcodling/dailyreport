@@ -1,0 +1,90 @@
+#!/bin/bash
+#
+# Git pre-commit hook — blocks commits with trailing whitespace
+# or invalid bash syntax.
+#
+# Intended file location: .git/hooks/pre-commit
+# Source copy lives in: scripts/pre-commit.hook
+#
+# Checks:
+#   1. Trailing whitespace on staged text files
+#   2. Tab characters in non-Makefile files
+#   3. Bash syntax validation on .sh files
+#   4. Docker lint (optional, if hadolint is installed)
+#
+
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[0;33m'
+NC='\033[0m'
+
+error_count=0
+
+# --- Step 1: Trailing whitespace on staged files ---------------
+staged_files=$(git diff --cached --name-only --diff-filter=ACM)
+
+if [ -n "$staged_files" ]; then
+    while IFS= read -r file; do
+        # Skip binary files
+        if file --mime "$file" 2>/dev/null | grep -q 'charset=binary'; then
+            continue
+        fi
+
+        # Check for trailing whitespace
+        result=$(git diff --cached --check -- "$file" 2>&1)
+        if [ -n "$result" ]; then
+            echo -e "${RED}FAIL:${NC} Trailing whitespace in ${file}"
+            echo "$result" | sed 's/^/            /'
+            error_count=$((error_count + 1))
+        fi
+
+        # Check for tabs (skip Makefiles — they require tabs)
+        if [[ "$file" != Makefile ]]; then
+            if git grep --cached -P '\t' -- "$file" >/dev/null 2>&1; then
+                tab_count=$(git grep --cached -Pn '\t' -- "$file" 2>/dev/null | wc -l | tr -d ' ')
+                echo -e "${YELLOW}WARN:${NC} ${tab_count} tab(s) in ${file} (use spaces)"
+            fi
+        fi
+    done <<< "$staged_files"
+fi
+
+# --- Step 2: Bash syntax check --------------------------------
+sh_files=$(git diff --cached --name-only --diff-filter=ACM | grep '\.sh$')
+
+if [ -n "$sh_files" ]; then
+    while IFS= read -r file; do
+        if [ ! -f "$file" ]; then
+            continue
+        fi
+        if bash -n "$file" >/dev/null 2>&1; then
+            echo -e "${GREEN}  OK:${NC} ${file} (bash syntax)"
+        else
+            echo -e "${RED}FAIL:${NC} bash syntax error in ${file}"
+            bash -n "$file" 2>&1 | sed 's/^/            /'
+            error_count=$((error_count + 1))
+        fi
+    done <<< "$sh_files"
+fi
+
+# --- Step 3: Docker lint (optional) ---------------------------
+docker_files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '(^Dockerfile$|^Dockerfile\.\w+$|docker-compose.*\.ya?ml$)')
+
+if [ -n "$docker_files" ] && command -v hadolint >/dev/null 2>&1; then
+    while IFS= read -r file; do
+        if hadolint "$file" 2>&1 | grep -q 'ERROR'; then
+            echo -e "${RED}FAIL:${NC} Docker lint issues in ${file}"
+        else
+            echo -e "${GREEN}  OK:${NC} ${file} (Docker lint)"
+        fi
+    done <<< "$docker_files"
+fi
+
+# --- Result ---------------------------------------------------
+echo ""
+if [ "$error_count" -gt 0 ]; then
+    echo -e "${RED}Commit blocked — fix the $error_count error(s) above, then try again.${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}All checks passed.${NC}"
+exit 0
