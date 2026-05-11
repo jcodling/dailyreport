@@ -88,7 +88,7 @@ rsync -avz --progress \
 
 # Copy .env separately (excluded by rsync .dockerignore pattern)
 sshpass -p "$NAS_PASS" scp -o StrictHostKeyChecking=no \
-    "$PROJECT_DIR/.env" "${NAS_USER}@${NAS_IP}:${DOCKER_DIR}/.env"
+    "$PROJECT_DIR/.env" "${NAS_USER}@${NAS_IP}:/volume1${DOCKER_DIR}/.env"
 
 info "Files copied. Starting container..."
 
