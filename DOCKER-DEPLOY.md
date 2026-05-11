@@ -109,8 +109,8 @@ docker logs -f dailyreport_daily
 
 ```bash
 ssh admin@192.168.1.100
-docker exec dailyreport_daily ls /app/reports/
-docker exec dailyreport_daily cat /app/reports/2025-05-08.md
+ls /volume1/docker/dailyreport/reports/
+cat /volume1/docker/dailyreport/reports/2025-05-08.md
 ```
 
 ### Re-deploy after code changes
@@ -164,8 +164,8 @@ The NAS needs outbound HTTPS and SFTP access:
 
 ```bash
 ssh admin@192.168.1.100
-docker exec dailyreport_daily curl -Is https://google.com
-docker exec dailyreport_daily curl -Is https://home554762802.1and1-data.host
+curl -Is https://google.com
+curl -Is https://home554762802.1and1-data.host
 ```
 
 ### .env not being read by the container
