@@ -41,6 +41,46 @@ function extractSnippet(item: RssItem): string {
     .slice(0, 250);
 }
 
+/**
+ * Parse raw RSS/Atom XML into Articles. Shared by the RSS feed fetcher and
+ * the Reddit `.hot.rss` fetcher (Reddit's per-subreddit RSS feed is
+ * Atom-formatted, and needs no auth unlike the blocked `.json` endpoint).
+ * Pass `sourceName` to override the feed's self-reported title (used to keep
+ * the "Reddit r/<sub>" display convention).
+ */
+export function parseRssXml(xml: string, sourceName?: string): Article[] {
+  const parsed = parser.parse(xml);
+
+  const channel = parsed?.rss?.channel ?? parsed?.feed;
+  if (!channel) return [];
+
+  const items: RssItem[] = Array.isArray(channel.item)
+    ? channel.item
+    : channel.item
+      ? [channel.item]
+      : Array.isArray(channel.entry)
+        ? channel.entry
+        : channel.entry
+          ? [channel.entry]
+          : [];
+
+  const resolvedSource = sourceName || extractText(channel.title) || "feed";
+
+  return items
+    .map((item) => {
+      const title = extractText(item.title);
+      const url = extractLink(item);
+      if (!title || !url) return null;
+      return {
+        title,
+        url,
+        snippet: extractSnippet(item),
+        source: resolvedSource,
+      } satisfies Article;
+    })
+    .filter((a): a is Article => a !== null);
+}
+
 export async function fetchRssFeed(feedUrl: string): Promise<Article[]> {
   try {
     const res = await fetch(feedUrl, {
@@ -51,37 +91,7 @@ export async function fetchRssFeed(feedUrl: string): Promise<Article[]> {
       console.warn(`RSS fetch failed for ${feedUrl}: ${res.status}`);
       return [];
     }
-    const xml = await res.text();
-    const parsed = parser.parse(xml);
-
-    const channel = parsed?.rss?.channel ?? parsed?.feed;
-    if (!channel) return [];
-
-    const items: RssItem[] = Array.isArray(channel.item)
-      ? channel.item
-      : channel.item
-      ? [channel.item]
-      : Array.isArray(channel.entry)
-      ? channel.entry
-      : channel.entry
-      ? [channel.entry]
-      : [];
-
-    const sourceName = extractText(channel.title) || feedUrl;
-
-    return items
-      .map((item) => {
-        const title = extractText(item.title);
-        const url = extractLink(item);
-        if (!title || !url) return null;
-        return {
-          title,
-          url,
-          snippet: extractSnippet(item),
-          source: sourceName,
-        } satisfies Article;
-      })
-      .filter((a): a is Article => a !== null);
+    return parseRssXml(await res.text());
   } catch (err) {
     console.warn(`RSS error for ${feedUrl}:`, err);
     return [];
