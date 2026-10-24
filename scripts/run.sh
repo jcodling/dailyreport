@@ -11,37 +11,20 @@ if [ -f "$PROJECT_DIR/.env" ]; then
   set +a
 fi
 
-# Detect runtime environment
-IN_CONTAINER=0
-if [ -f /.dockerenv ] || [ -n "$DOCKER_CONTAINER" ]; then
-  IN_CONTAINER=1
-fi
+# This is the macOS / launchd path only. The container does not run this
+# script: it is started via `docker run --env-file /app/.env` (see deploy-nas.sh),
+# so secrets are injected by the Docker daemon rather than sourced here.
+export PATH="$HOME/.bun/bin:/usr/local/bin:/usr/bin:/bin"
 
-# Runtime setup
-if [ "$IN_CONTAINER" = "1" ]; then
-  # Container: bun is installed in the image
-  export PATH="/usr/local/bin:/usr/bin:/bin"
-else
-  # macOS: use bun from PATH
-  export PATH="$HOME/.bun/bin:/usr/local/bin:/usr/bin:/bin"
-fi
+echo "[$(date)] Starting daily report" >> "$PROJECT_DIR/logs/dailyreport.log"
 
-echo "[$(date)] Starting daily report (container=$IN_CONTAINER)" >> "$PROJECT_DIR/logs/dailyreport.log"
+# Keep the machine awake for the run, then wake it the next day at 2:55am.
+caffeinate -i "$HOME/.bun/bin/bun" run "$PROJECT_DIR/src/index.ts"
 
-# Run the pipeline
-if [ "$IN_CONTAINER" = "1" ]; then
-  # In container: just run bun, no caffeine needed
-  bun run "$PROJECT_DIR/src/index.ts"
-else
-  # On macOS: keep the machine awake via caffeine, and wake it the next day
-  caffeinate -i "$HOME/.bun/bin/bun" run "$PROJECT_DIR/src/index.ts"
-
-  # Ensure recurring wake at 2:55am
-  if ! pmset -g sched 2>/dev/null | grep -q "2:55"; then
+if ! pmset -g sched 2>/dev/null | grep -q "2:55"; then
     sudo pmset repeat wake MTWRFSU 02:55:00 2>/dev/null \
       || echo "[$(date)] WARNING: pmset repeat wake failed — run: sudo pmset repeat wake MTWRFSU 02:55:00" \
       >> "$PROJECT_DIR/logs/dailyreport.log"
-  fi
 fi
 
 echo "[$(date)] Done" >> "$PROJECT_DIR/logs/dailyreport.log"

@@ -64,9 +64,11 @@ while IFS= read -r file; do
         if [ "$DRY_RUN" -eq 1 ]; then
             echo "[DRY-RUN] $file"
         else
-            # Fix trailing whitespace: remove whitespace at end of each line
-            sed -i '' 's/[[:space:]]*$//' "$file"
-             # Ensure final newline
+            # Fix trailing whitespace via a temp file (portable across GNU + BSD sed,
+            # unlike 'sed -i ""' which is macOS/BSD-only and crashes on GNU sed).
+            _tmp="$(mktemp)"
+            sed 's/[[:space:]]*$//' "$file" > "$_tmp" && mv "$_tmp" "$file"
+            # Ensure final newline
             if [ -s "$file" ] && [ "$(tail -c 1 "$file" | wc -l)" -eq 0 ]; then
                 echo "" >> "$file"
             fi

@@ -9,14 +9,23 @@ One deployment script, zero NAS CLI knowledge needed:
 ```bash
 # One-time setup on your Mac
 brew install --cask docker
-brew install sshpass rsync
+brew install rsync
+
+# One-time: enable password-less SSH to the NAS (auth by key, never a password)
+ssh-keygen -t ed25519      # only if you have no SSH key yet
+ssh-copy-id admin@192.168.1.100
 
 # Deploy
 export NAS_IP=192.168.1.100
 export NAS_USER=admin
-export NAS_PASS=yourpassword
 ./scripts/deploy-nas.sh
 ```
+
+> **Security:** this script authenticates by SSH key only (no `sshpass`, no
+> password on the command line, so nothing sensitive lands in local `ps`). It
+> pins the NAS host key on first connect with `StrictHostKeyChecking=accept-new`
+> rather than disabling verification, and copies `.env` with `chmod 600`.
+> Assumes a trusted home LAN.
 
 This script:
 
@@ -34,17 +43,20 @@ If you prefer the Container Station GUI instead of the CLI script:
    - Copy the entire project folder to `/docker/dailyreport/` on your NAS
 
 2. **Build image via Container Station:**
-   - Open **Container Station** -> **Created Image** -> **Create from URL**
-   - Set URL to local path: `/docker/dailyreport/`
-   - Container Station will find the `Dockerfile` and build
+   - Open **Container Station** -> **Image** -> **Create**
+   - Set the **build context / Dockerfile path** to the copied folder
+     (`/docker/dailyreport/`, which contains the `Dockerfile`)
+   - Container Station builds the image
 
-3. **Create container:**
-   - Open **Container Station** -> **Container** -> **Create**
+3. **Create container** (or run `docker run` with the same flags the script uses):
+   - Open **Container Station** -> **Image** -> **Create / run**
    - Select image: `dailyreport:latest`
    - Set scheduling: **Daily at 03:00**, task: **Start**
    - Advanced settings:
       - **Volume:** Mount `/volume1/docker/dailyreport/` -> `/app` (Read/Write)
-      - **Environment:** Add one variable `ENV_FILE_PATH` = `/app/.env`
+      - **Environment:** load the `.env` file via `--env-file /app/.env` (the
+        image entrypoint reads `/app/.env`; do **not** set an `ENV_FILE_PATH`
+        variable — the pipeline does not read one). Keep the file at `chmod 600`.
       - **Network:** Use `bridge` (default)
    - Start the container
 
@@ -90,6 +102,12 @@ All state persists across container recreations via bind mounts:
 | `/app/.env` | `/volume1/docker/dailyreport/.env` | SFTP and OAuth credentials (DO NOT commit to git) |
 | `/app/` | `/volume1/docker/dailyreport/` | Application source code |
 
+> **Keep secrets out of reach.** `deploy-nas.sh` copies `.env` in a single pass and
+> runs `chmod 600` on it. It holds SFTP + OAuth credentials, so keep it on the NAS
+> under a path that is **not** served by any web/container web root, and don't loosen
+> its permissions. It should also never be committed — it is already excluded by
+> `.dockerignore` and rsync.
+
 ## Managing the Container
 
 ### View logs
@@ -118,18 +136,22 @@ cat /volume1/docker/dailyreport/reports/2025-05-08.md
 ```bash
 export NAS_IP=192.168.1.100
 export NAS_USER=admin
-export NAS_PASS=yourpassword
 ./scripts/deploy-nas.sh
 ```
-Stops old, builds new, starts fresh container.
+Stops the old container, builds and loads the new image, and starts fresh.
 
 ### Manual full rebuild
 
+`deploy-nas.sh` already stops and removes the container before redeploying, so a
+plain re-run is the full rebuild. If you must wipe a stored image by hand, run
+the cleanup **on the NAS**, then redeploy **from your Mac**:
+
 ```bash
-ssh admin@192.168.1.100
-docker stop dailyreport_daily
-docker rm dailyreport_daily
-docker rmi dailyreport:latest
+# On NAS (SSH session, or Container Station):
+ssh admin@192.168.1.100 "docker rm -f dailyreport_daily; docker rmi dailyreport:latest"
+
+# On your Mac:
+export NAS_IP=192.168.1.100 NAS_USER=admin
 ./scripts/deploy-nas.sh
 ```
 
