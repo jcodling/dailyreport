@@ -14,7 +14,7 @@ Zero external AI dependencies — runs entirely locally in ~1 second per curatio
 4. **Learn** — Aggregates feedback from all historical remote reports, extracts keywords from voted articles, nudges `feedback-weights.json` by ±0.1 per keyword. Weights decay gradually so old signals don't dominate forever.
 5. **Publish** — Renders a Markdown report, uploads it to the hosted web UI via SFTP
 
-Runs automatically at 3 AM daily via macOS launchd.
+Runs automatically at 3 AM daily via macOS launchd **or** Synology Container Station Docker scheduler.
 
 ---
 
@@ -58,18 +58,25 @@ The top 5 articles per category by total score are selected. The wildcard is the
 | Remote sync | `ssh2-sftp-client` (IONOS SFTP) |
 | Web UI | PHP + Vanilla JS (hosted on IONOS) |
 | Auth | Google OAuth 2.0 (only allows access from configured email address) |
-| Scheduler | macOS launchd |
+| Scheduler | macOS launchd **or** Synology Container Station (see [DOCKER-DEPLOY.md](DOCKER-DEPLOY.md)) |
 
 ---
 
 ## Requirements
 
-- **Bun** runtime (for TypeScript execution)
+### For all deployment options:
+- **Bun** runtime (v1.x, inside Docker or native)
 - **IONOS SFTP** account (for hosting and report sync)
-- **Google OAuth** credentials (for web UI authentication — only allows access from configured email address)
-- **macOS** (for launchd automation)
+- **Google OAuth** credentials (for web UI authentication)
 
 No AI model or external API dependency required.
+
+### For macOS launchd (current deployment):
+- **macOS** (for launchd automation + `pmset` wake schedule)
+
+### For Synology NAS (Docker deployment):
+- **Synology NAS** with **Container Station** plugin installed
+- macOS (for building image and deploying via `scripts/deploy-nas.sh`)
 
 ---
 
@@ -104,12 +111,17 @@ No AI model or external API dependency required.
 │    └── .htaccess          # IONOS routing config
 │
 ├── scripts/
-│    ├── install-launchd.sh   # Install macOS launchd 3 AM job + persistent wake schedule
-│    ├── run.sh               # Wrapper: loads .env, sets PATH, runs pipeline
-│    └── monitor.sh           # Colourised live log viewer
+│     ├── install-launchd.sh     # Install macOS launchd 3 AM job + persistent wake schedule
+│     ├── deploy-nas.sh           # One-shot deploy to Synology NAS (builds + pushes Docker image)
+│     ├── run.sh                 # Wrapper: loads .env, sets PATH, runs pipeline
+│     └── monitor.sh             # Colourised live log viewer
 │
-├── reports/               # Generated Markdown reports (YYYY-MM-DD.md)
-└── logs/                  # Execution logs (dailyreport.log, dailyreport.err)
+├── Dockerfile                    # Alpine-based Bun image for Synology/Container Station
+├── docker-compose.yml            # Container spec (volumes, scheduling)
+├── .dockerignore                 # Excludes node_modules, .env, git etc from build context
+├── DOCKER-DEPLOY.md              # Full Synology NAS deployment guide
+├── reports/                      # Generated Markdown reports (YYYY-MM-DD.md)
+└── logs/                         # Execution logs (dailyreport.log, dailyreport.err)
 ```
 
 ---
@@ -187,7 +199,9 @@ Starts a dev server at http://localhost:3001 with the report viewer (no OAuth re
 
 ---
 
-## Automation (macOS launchd)
+## Automation
+
+### macOS launchd (current, local deployment)
 
 ```bash
 bash scripts/install-launchd.sh
@@ -216,6 +230,37 @@ tail -f logs/dailyreport.log
 ```bash
 launchctl unload ~/Library/LaunchAgents/com.dailyreport.generate.plist
 rm ~/Library/LaunchAgents/com.dailyreport.generate.plist
+```
+
+### Synology NAS Docker deployment (recommended for always-on NAS)
+
+For full Docker/Synology NAS deployment instructions, see [DOCKER-DEPLOY.md](DOCKER-DEPLOY.md).
+
+Quick summary:
+
+```bash
+# One-time prerequisites
+brew install --cask docker
+brew install sshpass rsync
+
+# Deploy to NAS (once)
+export NAS_IP=192.168.1.100
+export NAS_USER=admin
+export NAS_PASS=yourpassword
+./scripts/deploy-nas.sh
+```
+
+Then set up a **Scheduled Task** in Synology Container Station:
+- Container: `dailyreport_daily`
+- Schedule: Every day at 03:00
+- Task: `Start`
+
+The container runs for ~5 seconds, then exits. Container Station restarts it at the next scheduled time.
+
+View NAS container logs:
+```bash
+ssh admin@192.168.1.100
+docker logs dailyreport_daily --tail 30
 ```
 
 ---
